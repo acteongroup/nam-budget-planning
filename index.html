@@ -373,6 +373,12 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
         <div class="ph"><h2>Cost-center targets</h2><span class="sub">Type a total in the bottom row to set the overall target; it splits across cost centers by their current share.</span><span class="savestate" id="pl-save"></span></div>
         <div style="overflow-x:auto"><table class="mini" id="pl-centers"></table></div>
       </section>
+      <section class="panel" id="pl-cmd">
+        <div class="ph"><h2>Ask the planner</h2><span class="sub">Type an instruction about a line item. You preview it before anything changes.</span></div>
+        <div class="toolbar"><input id="cmd-in" type="text" placeholder='e.g. average Travel to the full 12 months based on previous months' aria-label="Instruction" style="flex:1;min-width:260px"><button class="btn" id="cmd-go" type="button">Preview</button></div>
+        <div class="sc-quick" id="cmd-ex" style="margin-top:8px">Try: <button class="chip" type="button">average Travel to the full 12 months based on previous months</button><button class="chip" type="button">average Brochures based on Jan-Jun, fill the remaining months</button><button class="chip" type="button">spread KOL retainer evenly</button><button class="chip" type="button">increase Travel by 10%</button><button class="chip" type="button">set Engel to 24000</button><button class="chip" type="button">remove Engel</button></div>
+        <div class="msg err" id="cmd-err" hidden style="margin-top:8px"></div>
+      </section>
       <section class="row" id="pl-lab">
         <div class="panel" id="pl-tools">
           <div class="ph"><h2>Scenario lab</h2>
@@ -1421,7 +1427,7 @@ function renderLabControls() {
   $("#sc-quick").innerHTML = `Try: ` + [["p:shows", 10], ["p:shows", 20], ["p:kol", 15], ["p:adv", -10]].filter(([k]) => pre.some(p => p.k === k))
     .map(([k, v]) => `<button class="chip" type="button" data-qk="${k}" data-qv="${v}">${esc(PRESETS.find(p => p.k === k).name)} ${v > 0 ? "+" : ""}${v}%</button>`).join("");
   $("#pl-tools").querySelectorAll("button,select,input").forEach(el => { if (!["sc-tabs"].includes(el.parentElement.id) && !el.closest("#sc-snap") && el.id !== "sc-undo") el.disabled = PL_RO; });
-  $("#sc-snapsave").disabled = PL_RO;
+  $("#sc-snapsave").disabled = PL_RO; $("#cmd-in").disabled = PL_RO; $("#cmd-go").disabled = PL_RO;
   const last = (PLAN.snapshots || [])[0];
   $("#sc-undo").hidden = PL_RO || !(last && last.auto && last.undoable);
   if (!$("#sc-snap").hidden) renderSnaps();
@@ -1510,6 +1516,7 @@ $("#sc-run2").addEventListener("click", () => runTarget());
 function closePreview() { SCN = null; $("#sc-preview").hidden = true; $("#sc-preview").innerHTML = ""; }
 function renderPreview() {
   if (SCN.kind === "remove") return renderRemovePreview();
+  if (SCN.kind === "cmd") return renderCmdPreview();
   const S = SCN, cuts = S.res.cuts.filter(c => !c.off), cutTot = sum(cuts.map(c => c.cut));
   const freed = S.freed || 0, before = planTotal(), after = before + S.delta - freed - cutTot, tgt = planTarget(S.kind === "target" ? S.center : null);
   const cls = v => v > 0.5 ? "up" : v < -0.5 ? "down" : "";
@@ -1554,6 +1561,15 @@ function applyScenario() {
   const S = SCN; if (!S) return;
   takeSnapshot(`Before: ${S.label}`, true, true);
   const totBefore = planTotal();
+  if (S.kind === "cmd") {
+    const live = S.changes.filter(c => !c.off), gone = new Set();
+    live.forEach(c => { if (c.m) { c.r.m = c.m; c.r.note = c.r.note ? `${c.r.note}; ${c.why}` : c.why; } else gone.add(c.r.id); });
+    const det = live.map(c => `${c.r.n}: ${c.m ? usd(c.cur) + " → " + usd(c.after) : "removed (" + usd(c.cur) + ")"} (${c.why})`);
+    if (gone.size) PLAN.rows = PLAN.rows.filter(r => !gone.has(r.id));
+    logChange("Instruction: " + S.label, planTotal() - totBefore, det);
+    CMD = null; closePreview(); renderPlanner(); scheduleSave();
+    toast(`Applied to ${live.length} line${live.length === 1 ? "" : "s"}. Use Undo last scenario to roll it back.`); return;
+  }
   if (S.kind === "remove") {
     const ids = new Set(S.ids), gone = PLAN.rows.filter(r => ids.has(r.id)).map(r => `${r.n} (${usd(plFy(r))}, ${r.g})`);
     if (S.mode === "zero") PLAN.rows.forEach(r => { if (ids.has(r.id)) { r.m = Array(12).fill(0); r.note = r.note ? `${r.note}; set to $0` : "Set to $0"; } });
@@ -1588,6 +1604,107 @@ function applyScenario() {
   closePreview(); renderPlanner(); scheduleSave();
   toast(`Applied "${S.label}". Use Undo to roll it back.`);
 }
+
+/* ---- Ask the planner (plain-language line instructions) ---- */
+const MON_RX = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+const monIdx = w => MONTHS.findIndex(m => m.toLowerCase() === w.slice(0, 3).toLowerCase());
+const CMD_STOP = new Set("the a an of to in on for all line lines item items full months month year based previous prior actual actuals using use and fill remaining rest evenly even by from through thru then".split(" "));
+const lastSpend = r => r.m.reduce((li, v, i) => Math.abs(v) >= 1 ? i : li, -1);
+function cmdMatchRows(t) {
+  const hits = PLAN.rows.filter(r => {
+    const n = r.n.toLowerCase().trim(), gn = (PLAN.gls[r.g] || "").toLowerCase().trim();
+    return (n.length >= 3 && t.includes(n)) || (gn.length >= 4 && t.includes(gn)) || new RegExp("\\b" + r.g + "\\b").test(t);
+  });
+  if (hits.length) {
+    const names = hits.map(r => r.n.toLowerCase().trim());
+    return hits.filter((r, i) => !names.some((o, j) => j !== i && o.length > names[i].length && o.includes(names[i])));
+  }
+  const words = t.replace(/[^a-z0-9& ]+/g, " ").split(/\s+/).filter(w => w.length >= 3 && !CMD_STOP.has(w) && !new RegExp("^(" + MON_RX + ")").test(w) &&
+    !/^(average|avg|spread|set|increase|decrease|raise|cut|reduce|remove|delete|drop|zero|project|annualize|annualise|extend|percent)$/.test(w) && !/^\d/.test(w));
+  if (!words.length) return [];
+  return PLAN.rows.filter(r => { const hay = (r.n + " " + (PLAN.gls[r.g] || "")).toLowerCase(); return words.every(w => hay.includes(w)); });
+}
+function parseCmd(text) {
+  const t = " " + text.toLowerCase().replace(/\s+/g, " ").trim() + " ";
+  let op = null;
+  if (/\b(average|avg|annuali[sz]e|run.?rate|project|extend)\b/.test(t)) op = "avg";
+  else if (/\b(spread|even(ly)?)\b/.test(t)) op = "even";
+  else if (/\b(remove|delete|drop)\b/.test(t)) op = "remove";
+  else if (/\b(increase|raise|grow|decrease|reduce|cut|lower)\b/.test(t)) op = "adj";
+  else if (/\bzero\b/.test(t) || (/\b(set|make|change)\b/.test(t) && /\bto\b/.test(t))) op = "set";
+  if (!op) return { err: "I didn't catch what to do. Start with average, spread, increase, decrease, set, or remove, then name the line." };
+  const rows = cmdMatchRows(t);
+  if (!rows.length) return { err: "I couldn't find a matching line item. Use the line's name (or its GL name or code) in your instruction." };
+  const P = { op, rows, text };
+  if (op === "avg") {
+    let m;
+    if ((m = t.match(new RegExp("\\b(" + MON_RX + ")\\w*\\s*(?:-|–|to|through|thru|and)\\s*(" + MON_RX + ")\\w*")))) P.basis = [monIdx(m[1]), monIdx(m[2])];
+    else if ((m = t.match(/\bfirst (\d{1,2}) months?/))) P.basis = [0, Math.min(11, +m[1] - 1)];
+    else if ((m = t.match(/\blast (\d{1,2}) months?/))) P.basis = [-1, +m[1]];
+    else if ((m = t.match(new RegExp("\\b(?:through|thru|up to|until|to date)\\s+(" + MON_RX + ")")))) P.basis = [0, monIdx(m[1])];
+    P.keep = /\b(remaining|rest of|fill|only the|empty|blank months)\b/.test(t);
+    P.skipZeros = /\b(non.?zero|months with spend|ignore zero|excluding zero)\b/.test(t);
+  } else if (op === "adj" || op === "set") {
+    const found = (t.match(/-?\d[\d,]*\.?\d*\s*(%|percent|k\b)?/g) || []).map(x => x.trim()).filter(x => !/^\d{5}$/.test(x));
+    const last = found.pop();
+    if (!last && !(op === "set" && /\bzero\b/.test(t))) return { err: op === "adj" ? "How much? For example: increase Travel by 10% or by $5,000." : "What amount? For example: set Engel to 24000." };
+    if (last) {
+      P.pct = op === "adj" && /%|percent/.test(last);
+      let v = parseFloat(last.replace(/[^0-9.\-]/g, "")); if (/k$/.test(last)) v *= 1000;
+      if (op === "adj" && /\b(decrease|reduce|cut|lower)\b/.test(t)) v = -Math.abs(v);
+      P.val = v;
+    } else P.val = 0;
+  }
+  return P;
+}
+function cmdBuild(P, skip) {
+  const out = [];
+  P.rows.forEach(r => {
+    const cur = plFy(r); let m = null, why = "", off = skip.has(r.id);
+    if (P.op === "avg") {
+      let a = 0, b = lastSpend(r);
+      if (P.basis) { if (P.basis[0] === -1) { b = lastSpend(r); a = Math.max(0, b - P.basis[1] + 1); } else [a, b] = P.basis; }
+      const idx = []; for (let i = a; i <= b; i++) if (!P.skipZeros || Math.abs(r.m[i]) >= 1) idx.push(i);
+      if (b < a || b < 0 || !idx.length) { out.push({ r, m: null, cur, why: "No spend in the months to average", off: true, bad: true }); return; }
+      const avg = sum(idx.map(i => r.m[i])) / idx.length;
+      m = P.keep ? r.m.map((v, i) => i >= a && i <= b ? v : Math.round(avg)) : Array(12).fill(Math.round(avg));
+      why = `${MONTHS[a]}–${MONTHS[b]} average ${usd(avg)}/mo${P.skipZeros ? " (zero months ignored)" : ""}${P.keep ? ", other months filled" : ", all 12 months"}`;
+    } else if (P.op === "even") { m = Array(12).fill(Math.round(cur / 12)); m[11] += Math.round(cur) - sum(m); why = `${usd(cur)} spread evenly`; }
+    else if (P.op === "remove") { why = "Remove the line"; }
+    else {
+      const want = Math.max(0, P.op === "set" ? P.val : P.pct ? cur * (1 + P.val / 100) : cur + P.val);
+      const tmp = { m: r.m.slice() }; setRowFy(tmp, want); m = tmp.m;
+      why = P.op === "set" ? `Set to ${usd(want)}` : P.pct ? `${P.val > 0 ? "+" : "−"}${Math.abs(P.val)}%` : `${P.val > 0 ? "+" : "−"}${usd(Math.abs(P.val))}`;
+    }
+    out.push({ r, m, cur, after: m ? sum(m) : 0, why, off });
+  });
+  return out;
+}
+let CMD = null;
+function runCmd(skip = new Set()) {
+  const err = $("#cmd-err"), text = $("#cmd-in").value.trim(); err.hidden = true;
+  if (!CMD || CMD.text !== text) { if (!text) return; CMD = parseCmd(text); CMD.text = text; skip = new Set(); }
+  if (CMD.err) { err.textContent = CMD.err; err.hidden = false; CMD = null; closePreview(); return; }
+  const ch = cmdBuild(CMD, skip), live = ch.filter(c => !c.off);
+  SCN = { kind: "cmd", changes: ch, skip, delta: sum(live.map(c => (c.m ? c.after : 0) - c.cur)), res: { cuts: [], shortfall: 0 }, label: text.length > 60 ? text.slice(0, 57) + "…" : text };
+  renderPreview();
+}
+function renderCmdPreview() {
+  const S = SCN, live = S.changes.filter(c => !c.off), before = planTotal(), after = before + S.delta, tgt = planTarget(null);
+  const stat = (k, v, c = "") => `<div class="stat"><div class="k">${k}</div><div class="v num ${c}">${v}</div></div>`, cls = v => v > 0.5 ? "up" : v < -0.5 ? "down" : "";
+  let h = `<div class="ph" style="margin:0"><h2>Preview: ${esc(S.label)}</h2><span class="sub">Untick a line to leave it alone.</span></div><div class="sc-sum">` + stat("Lines affected", live.length) + stat("Plan total", `${usd(before)} → ${usd(after)}`, cls(after - before));
+  if (tgt) h += stat("Against target", Math.abs(after - tgt) < 0.5 ? "On target" : (after > tgt ? "+" : "−") + usd(Math.abs(after - tgt)), Math.abs(after - tgt) < 0.5 ? "" : after > tgt ? "up" : "down");
+  h += `</div><div style="overflow-x:auto"><table class="mini"><thead><tr><th></th><th>Line item</th><th style="text-align:left">What happens</th><th>Now</th><th>After</th><th>Change</th></tr></thead><tbody>` +
+    S.changes.map(c => { const af = c.m ? c.after : 0; return `<tr class="${c.off ? "off" : ""}"><td class="ck"><input type="checkbox" data-cskip="${c.r.id}" ${c.off ? "" : "checked"} ${c.bad ? "disabled" : ""} aria-label="Include ${esc(c.r.n)}"></td><td style="white-space:normal">${esc(c.r.n)}<div class="code">${esc(c.r.g)} · ${esc(plCname(c.r.c))}</div></td><td style="text-align:left;white-space:normal">${esc(c.why)}</td><td class="num">${usd(c.cur)}</td><td class="num">${c.bad ? "–" : usd(af)}</td><td class="num">${c.bad ? "–" : (af - c.cur >= 0 ? "+" : "−") + usd(Math.abs(af - c.cur))}</td></tr>`; }).join("") +
+    `</tbody></table></div><div class="toolbar"><button class="btn" id="sc-apply" type="button">Apply to plan</button><button class="btn ghost" id="sc-discard" type="button">Discard</button><span class="sub">A snapshot is saved first, so you can undo.</span></div>`;
+  const p = $("#sc-preview"); p.innerHTML = h; p.hidden = false;
+  p.querySelectorAll("[data-cskip]").forEach(cb => cb.addEventListener("change", () => { const sk = new Set(SCN.skip); cb.checked ? sk.delete(cb.dataset.cskip) : sk.add(cb.dataset.cskip); runCmd(sk); }));
+  $("#sc-discard").addEventListener("click", closePreview); $("#sc-apply").addEventListener("click", applyScenario);
+  p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+$("#cmd-go").addEventListener("click", () => { CMD = null; runCmd(); });
+$("#cmd-in").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); CMD = null; runCmd(); } });
+$("#cmd-ex").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; $("#cmd-in").value = b.textContent; CMD = null; runCmd(); });
 
 /* ---- Change log ---- */
 function logChange(label, delta, detail) {
