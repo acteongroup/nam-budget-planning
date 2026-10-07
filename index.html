@@ -1,0 +1,1891 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Acteon Marketing Spend</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script>
+try { const t = localStorage.getItem("acteon-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+</script>
+<script>
+/* ============================================================
+   FIREBASE CONFIG — paste your project's web config here.
+   Firebase console → Project settings → General → Your apps → Web app → Config.
+   While apiKey starts with "PASTE", the app runs in PREVIEW MODE:
+   no login, and imports are saved only in this browser.
+   ============================================================ */
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAdrvSR35MXw7gBQnSxXhu_iIMoUBAzZFk",
+  authDomain: "marketing-budget-72333.firebaseapp.com",
+  projectId: "marketing-budget-72333",
+  storageBucket: "marketing-budget-72333.firebasestorage.app",
+  messagingSenderId: "788877106581",
+  appId: "1:788877106581:web:3b2b1a577830d2e3b46a9c"
+};
+</script>
+<style>
+/* Layout: navy masthead with app actions, one filter row, KPI strip, two chart rows, ledger, notes. Summary before detail. */
+:root{
+  --bg:#f3f6f8; --surface:#ffffff; --surface-2:#eef3f6; --line:#dbe3e9; --grid:#e8eef2;
+  --ink:#0e2a3a; --ink-2:#47606f; --ink-3:#7a8f9b;
+  --brand:#0e2a3a; --brand-ink:#ffffff; --accent:#00b0db; --accent-ink:#0a7fa0; --btn:#0e2a3a; --btn-ink:#ffffff;
+  --s1:#0098c0; --s2:#eb6834; --s3:#4a3aa7; --s4:#1baf7a;
+  --good:#1f8a4c; --good-bg:#e3f4ea; --bad:#c23b2e; --bad-bg:#fbe7e4; --warn:#9a6700; --warn-bg:#fff4d6;
+  --focus:#00b0db; --shadow:rgba(14,42,58,.12);
+  --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b161e; --surface:#13202a; --surface-2:#192a36; --line:#263946; --grid:#1f303c;
+  --ink:#e8f0f4; --ink-2:#a6b9c4; --ink-3:#7890a0;
+  --brand:#0e2a3a; --accent:#22c0e6; --accent-ink:#5fd3f0; --btn:#22c0e6; --btn-ink:#06202b;
+  --s1:#109cc2; --s2:#d95926; --s3:#9085e9; --s4:#199e70;
+  --good:#5fcf8e; --good-bg:#14321f; --bad:#ff8a7d; --bad-bg:#3b1b18; --warn:#f2c14e; --warn-bg:#3a2e10;
+  --focus:#22c0e6; --shadow:rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b161e; --surface:#13202a; --surface-2:#192a36; --line:#263946; --grid:#1f303c;
+  --ink:#e8f0f4; --ink-2:#a6b9c4; --ink-3:#7890a0;
+  --brand:#0e2a3a; --accent:#22c0e6; --accent-ink:#5fd3f0; --btn:#22c0e6; --btn-ink:#06202b;
+  --s1:#109cc2; --s2:#d95926; --s3:#9085e9; --s4:#199e70;
+  --good:#5fcf8e; --good-bg:#14321f; --bad:#ff8a7d; --bad-bg:#3b1b18; --warn:#f2c14e; --warn-bg:#3a2e10;
+  --focus:#22c0e6; --shadow:rgba(0,0,0,.4); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45;padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+button{font:inherit}
+.btn{font-size:13px;font-weight:600;border:1px solid transparent;background:var(--btn);color:var(--btn-ink);border-radius:8px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink-2);border-color:var(--line);font-weight:500}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink-3)}
+.btn.light{background:#ffffff;color:#0e2a3a}
+.btn.onbrand{background:transparent;color:#d6e6ee;border-color:rgba(255,255,255,.25);font-weight:500}
+.btn.onbrand:hover{border-color:rgba(255,255,255,.6);color:#fff}
+.linkbtn{background:none;border:0;color:var(--accent-ink);cursor:pointer;padding:0;font-size:13px;text-decoration:underline}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* masthead */
+.mast{background:var(--brand);color:var(--brand-ink);padding:24px 24px 64px}
+.mast-in,.wrap{max-width:1280px;margin:0 auto}
+.mast-in{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.mast-title{min-width:0}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7fd8ee;font-weight:600}
+.mast h1{margin:6px 0 6px;font-size:clamp(24px,3.4vw,34px);font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.mast p{margin:0;color:#b9cdd8;font-size:13px}
+.mast .upd{margin-top:4px;color:#8fb0c1;font-size:12px}
+.mast-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mast-actions select{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.25);color-scheme:dark}
+.who{font-size:12px;color:#8fb0c1;width:100%;text-align:right}
+.banner{background:var(--warn-bg);color:var(--warn);font-size:12.5px;padding:8px 24px;text-align:center}
+
+.wrap{padding-inline:24px;margin-top:-44px;display:flex;flex-direction:column;gap:16px;padding-bottom:40px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:14px 18px;box-shadow:0 6px 20px var(--shadow)}
+.fgroup{display:flex;flex-direction:column;gap:5px;min-width:0}
+.flabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:3px}
+.seg button{font-size:13px;border:0;background:transparent;color:var(--ink-2);padding:6px 12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.sw{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none}
+select,input[type=search],input[type=text],input[type=email],input[type=password],input[type=number]{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;max-width:100%}
+select{max-width:340px}
+input[type=search]{width:220px}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{display:flex;flex-direction:column;gap:6px}
+.kpi .k{font-size:12px;color:var(--ink-2);font-weight:500}
+.kpi .v{font-size:26px;font-weight:600;letter-spacing:-.01em}
+.kpi .s{font-size:12px;color:var(--ink-3)}
+.meter{height:8px;background:var(--surface-2);border-radius:4px;position:relative;overflow:hidden;margin-top:4px}
+.meter i{position:absolute;top:0;bottom:0;left:0;border-radius:4px}
+.meter .a{background:var(--accent)}
+.meter .p{background:repeating-linear-gradient(135deg,var(--accent) 0 3px,transparent 3px 6px);opacity:.8}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;width:max-content}
+.pill.over{background:var(--bad-bg);color:var(--bad)}
+.pill.under{background:var(--good-bg);color:var(--good)}
+.pill.na{background:var(--surface-2);color:var(--ink-2)}
+.row{display:grid;gap:16px;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.row.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.ph h2{margin:0;font-size:15px;font-weight:600}
+.ph .sub{font-size:12px;color:var(--ink-3)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);align-items:center}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.hatch{width:12px;height:9px;border-radius:2px;background:repeating-linear-gradient(135deg,var(--ink-3) 0 2px,transparent 2px 4px);border:1px solid var(--ink-3)}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart text{font-family:var(--f-ui);font-size:11px;fill:var(--ink-3)}
+.chart .lbl{fill:var(--ink-2)}
+.chart .val{fill:var(--ink);font-family:var(--f-num);font-size:11px}
+.hit{fill:transparent;cursor:pointer}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;box-shadow:0 8px 24px var(--shadow);z-index:50;min-width:170px;max-width:280px}
+.tip b{display:block;margin-bottom:4px;font-size:12px}
+.tip .tr{display:flex;justify-content:space-between;gap:14px;color:var(--ink-2)}
+.tip .tr .num{color:var(--ink)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table.ledger{border-collapse:collapse;width:100%;font-size:12.5px;min-width:1180px}
+.ledger th,.ledger td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+.ledger th:first-child,.ledger td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;white-space:normal;min-width:240px;max-width:300px}
+.ledger thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600;background:var(--surface)}
+.ledger thead th.proj{color:var(--accent-ink)}
+.ledger td.proj{background:color-mix(in srgb,var(--accent) 7%,transparent);font-style:italic;color:var(--ink-2)}
+.ledger td.tot,.ledger th.tot{font-weight:600;border-left:1px solid var(--line)}
+.ledger td.neg{color:var(--bad)}
+.ledger td.zero{color:var(--ink-3)}
+.ledger tr.gl td{background:var(--surface-2);font-weight:600;cursor:pointer}
+.ledger tr.gl .chev{display:inline-block;width:14px;transition:transform .15s;color:var(--ink-3)}
+.ledger tr.gl.closed .chev{transform:rotate(-90deg)}
+.ledger tr.grand td{font-weight:700;border-top:2px solid var(--ink-3);background:var(--surface)}
+.code{white-space:nowrap;font-family:var(--f-num);font-size:11px;color:var(--ink-3);font-weight:400;margin-right:6px}
+.ctag{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 5px;margin-left:6px;color:var(--ink-2);border:1px solid var(--line)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.note h3{margin:0 0 6px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
+.note p,.note li{font-size:12.5px;color:var(--ink-2);margin:0}
+.note ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.empty{padding:30px;text-align:center;color:var(--ink-3)}
+.emptystate{padding:56px 24px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.emptystate h2{margin:0;font-size:18px}
+.emptystate p{margin:0;color:var(--ink-2);max-width:460px}
+
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;background:var(--brand);padding:24px}
+.login-card{background:var(--surface);border-radius:12px;padding:28px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.login-card h1{margin:0;font-size:22px;letter-spacing:-.01em}
+.login-card .eyebrow{color:var(--accent-ink)}
+.login-card label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.login-card input{width:100%;padding:10px 12px;font-size:14px}
+.login-card .btn{justify-content:center;padding:10px}
+.msg{font-size:12.5px;border-radius:8px;padding:8px 10px}
+.msg.err{background:var(--bad-bg);color:var(--bad)}
+.msg.ok{background:var(--good-bg);color:var(--good)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:12px;padding:0;background:var(--surface);color:var(--ink);width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgba(6,18,26,.55)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100vh - 50px)}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dlg-h h2{margin:0;font-size:16px}
+.dlg-b{padding:18px 20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
+.x{background:none;border:0;color:var(--ink-3);font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--ink-2);cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center}
+.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.drop strong{color:var(--ink)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.fields label{display:flex;flex-direction:column;gap:5px}
+.fields select,.fields input{width:100%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--surface-2);border-radius:8px;padding:10px 12px}
+.stat .k{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.stat .v{font-size:16px;font-weight:600;margin-top:2px}
+table.mini{border-collapse:collapse;width:100%;font-size:13px}
+.mini th,.mini td{padding:7px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+.mini th:first-child,.mini td:first-child{text-align:left}
+.mini th{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.mini input{width:130px;text-align:right}
+.warnlist{margin:0;padding-left:18px;font-size:12.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:3px;max-height:160px;overflow:auto}
+.cmp{font-size:12.5px;color:var(--ink-2)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13px;z-index:60;box-shadow:0 8px 24px var(--shadow)}
+.loading{min-height:60vh;display:grid;place-items:center;color:var(--ink-3)}
+
+/* tabs + planner */
+.tabs{display:flex;gap:4px;margin-top:14px}
+.tabs button{background:transparent;border:1px solid rgba(255,255,255,.2);color:#b9cdd8;border-radius:999px;padding:5px 14px;font-size:13px;cursor:pointer}
+.tabs button[aria-current="page"]{background:#ffffff;color:#0e2a3a;border-color:#ffffff;font-weight:600}
+.pl-form{display:flex;flex-direction:column;gap:14px;max-width:820px}
+.pl-form h2{margin:0;font-size:18px}
+.pl-form p{margin:0;color:var(--ink-2)}
+.pgrid{min-width:1500px}
+.pgrid input{font:inherit;font-family:var(--f-num);font-size:12px;width:78px;text-align:right;border:1px solid transparent;background:transparent;color:var(--ink);border-radius:5px;padding:4px 5px}
+.pgrid input:hover:not(:disabled){border-color:var(--line)}
+.pgrid input:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.pgrid input:disabled{color:var(--ink);opacity:1}
+.pgrid input.nm{font-family:var(--f-ui);font-size:12.5px;width:100%;text-align:left}
+.pgrid input.note{font-family:var(--f-ui);width:180px;text-align:left}
+.pgrid input.fy{font-weight:600;width:90px}
+.pgrid td{padding:3px 6px}
+.pgrid tr.gl td{padding:7px 8px}
+.pgrid .base{color:var(--ink-3)}
+.pgrid .up{color:var(--bad)} .pgrid .down{color:var(--good)}
+.pgrid tr.new td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.del{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px}
+.del:hover{color:var(--bad);background:var(--bad-bg)}
+.addline{font-size:12px;font-weight:500;background:transparent;border:1px dashed var(--ink-3);color:var(--ink-2);border-radius:6px;padding:3px 10px;cursor:pointer}
+.addline:hover{border-color:var(--accent);color:var(--accent-ink)}
+.mini input.tgt{width:140px}
+.savestate{font-size:12px;color:var(--ink-3)}
+.savestate.err{color:var(--bad)}
+.pill.draft{background:var(--warn-bg);color:var(--warn)}
+.pill.sub{background:var(--good-bg);color:var(--good)}
+.hint{font-size:12px;color:var(--ink-3);margin:10px 0 0}
+.adj{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 8px;border:1px solid var(--line);border-radius:8px}
+.adj input{width:70px}
+/* scenario lab */
+.sc-pane{display:flex;flex-direction:column;gap:12px}
+.sc-pane .fields{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.sc-lede{margin:0;color:var(--ink-2);font-size:13px}
+.inl{display:flex;gap:6px}.inl input{width:90px}.inl select{width:auto}
+.chk{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.sc-quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--ink-3)}
+.chip{font-size:12px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:3px 10px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+#sc-preview{margin-top:16px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:14px}
+.sc-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.sc-sum .stat .v.up{color:var(--bad)} .sc-sum .stat .v.down{color:var(--good)}
+.why{font-size:11px;border-radius:4px;padding:1px 6px;white-space:nowrap}
+.why.te{background:color-mix(in srgb,var(--s2) 16%,transparent);color:var(--ink)}
+.why.misc{background:color-mix(in srgb,var(--s3) 16%,transparent);color:var(--ink)}
+.why.onetime{background:var(--warn-bg);color:var(--warn)}
+.why.general,.why.sub,.why.recurring,.why.event{background:var(--surface-2);color:var(--ink-2)}
+.mini td.ck{width:28px}
+.mini tr.off td{opacity:.45}
+.gbar{display:inline-block;height:8px;border-radius:2px;vertical-align:middle;margin-left:6px}
+.guide{border:1px solid var(--line);border-radius:8px;background:var(--surface-2);margin:0 0 12px;font-size:13px;color:var(--ink-2)}
+.guide>summary{cursor:pointer;padding:9px 12px;font-weight:600;color:var(--ink)}
+.guide .gb{padding:0 14px 12px;display:flex;flex-direction:column;gap:10px;line-height:1.5}
+.guide h4{margin:0 0 2px;font-size:13px;color:var(--ink)}
+.guide p,.guide ul{margin:0}.guide ul{padding-left:18px}
+.guide table{border-collapse:collapse;font-size:12px}.guide td,.guide th{padding:2px 12px 2px 0;text-align:left;font-weight:400}.guide th{color:var(--ink);font-weight:600}
+.inc{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:8px}
+.inc .inl{align-items:center}.inc .inc-qty{width:70px}
+#sc-more{display:flex;flex-direction:column;gap:10px}
+.rmlist{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.rmlist .rg{background:var(--surface-2);font-size:12px;font-weight:600;padding:5px 10px;color:var(--ink-2)}
+.rmlist label{display:flex;gap:8px;align-items:center;padding:5px 10px;font-size:13px;border-top:1px solid var(--line);cursor:pointer}
+.rmlist label span.a{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.ins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ins li{display:flex;gap:10px;font-size:13px;color:var(--ink-2);line-height:1.45}
+.ins li b{color:var(--ink);font-weight:600}
+.ins .ic{flex:none;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:700}
+.ins .ic.bad{background:var(--bad-bg);color:var(--bad)} .ins .ic.warn{background:var(--warn-bg);color:var(--warn)} .ins .ic.good{background:var(--good-bg);color:var(--good)} .ins .ic.info{background:var(--surface-2);color:var(--accent-ink)}
+.ins .act{margin-top:4px}
+.ins .act button{font-size:12px}
+@media (max-width:980px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.row,.row.even{grid-template-columns:minmax(0,1fr)}.who{text-align:left}}
+@media (max-width:520px){.mast{padding-inline:16px}.wrap{padding-inline:16px}.kpis{grid-template-columns:minmax(0,1fr)}input[type=search]{width:100%}.fgroup{width:100%}select{max-width:100%;width:100%}.seg{width:100%}.seg button{flex:1;justify-content:center}.banner{padding-inline:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section class="login" id="v-login" hidden>
+  <form class="login-card" id="login-form" novalidate>
+    <div class="eyebrow">Acteon Inc. · North America</div>
+    <h1>Marketing Spend</h1>
+    <label>Email<input id="li-email" type="email" autocomplete="username" required></label>
+    <label>Password<input id="li-pass" type="password" autocomplete="current-password" required></label>
+    <div class="msg err" id="li-err" hidden></div>
+    <button class="btn" id="li-btn" type="submit">Sign in</button>
+    <button class="linkbtn" id="li-reset" type="button">Forgot password?</button>
+  </form>
+</section>
+
+<div class="loading" id="v-loading">Loading…</div>
+
+<!-- ============ APP ============ -->
+<div id="v-app" hidden>
+  <div class="banner" id="preview-banner" hidden>Preview mode: Firebase isn't configured yet, so imports are saved only in this browser. See README.md to connect it.</div>
+  <header class="mast"><div class="mast-in">
+    <div class="mast-title">
+      <div class="eyebrow">Acteon Inc. · North America</div>
+      <h1 id="h-title">Marketing Spend</h1>
+      <p id="h-sub"></p>
+      <p class="upd" id="h-upd"></p>
+      <nav class="tabs" id="tabs" aria-label="Views"><button type="button" data-view="dash" aria-current="page">Dashboard</button><button type="button" data-view="plan">Budget planner</button></nav>
+    </div>
+    <div class="mast-actions">
+      <button class="btn onbrand" id="b-theme" type="button" aria-label="Color theme">◐ Auto</button>
+      <select id="year" aria-label="Year" hidden></select>
+      <button class="btn light" id="b-import" type="button" hidden>⤓ Import data</button>
+      <button class="btn onbrand" id="b-history" type="button" hidden>History</button>
+      <button class="btn onbrand" id="b-signout" type="button" hidden>Sign out</button>
+      <div class="who" id="who"></div>
+    </div>
+  </div></header>
+
+  <main class="wrap" id="dash" hidden>
+    <section class="panel filters" aria-label="Filters">
+      <div class="fgroup"><span class="flabel">Cost center</span><div class="seg" id="seg" role="group" aria-label="Cost center"></div></div>
+      <div class="fgroup"><label class="flabel" for="gl">GL account</label><select id="gl"></select></div>
+      <div class="fgroup"><label class="flabel" for="q">Vendor / line item</label><input id="q" type="search" placeholder="e.g. Patterson, Hinman"></div>
+      <button class="btn ghost" id="reset" type="button">Reset filters</button>
+    </section>
+    <section class="kpis" id="kpis" aria-label="Summary"></section>
+    <section class="row">
+      <div class="panel"><div class="ph"><h2>Monthly spend</h2><div class="legend" id="lg1"></div></div><div class="chart" id="c-month"></div></div>
+      <div class="panel"><div class="ph"><h2>Cumulative spend vs budget</h2><span class="sub" id="cum-sub"></span></div><div class="chart" id="c-cum"></div></div>
+    </section>
+    <section class="row even">
+      <div class="panel"><div class="ph"><h2>Full-year by GL account</h2><span class="sub">Click a bar to filter</span></div><div class="chart" id="c-gl"></div></div>
+      <div class="panel"><div class="ph"><h2>Largest line items</h2><span class="sub">Full-year (actual + projected)</span></div><div class="chart" id="c-top"></div></div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Ledger</h2>
+        <div class="toolbar">
+          <label class="flabel" for="ord">Order</label>
+          <select id="ord"><option value="sheet">Workbook order</option><option value="fy">Largest first</option></select>
+          <button class="btn ghost" id="expand" type="button">Expand all</button>
+        </div></div>
+      <div class="tablewrap"><table class="ledger" id="tbl"></table></div>
+    </section>
+    <section class="notes" id="notes"></section>
+  </main>
+
+  <main class="wrap" id="nodata" hidden>
+    <section class="panel emptystate">
+      <h2 id="nd-title">No spend data yet</h2>
+      <p id="nd-text">Import the Marketing workbook to build the dashboard. Pick the year's tab (for example "2026") and the app reads every line item, budget and GL total from it.</p>
+      <button class="btn" id="nd-import" type="button">⤓ Import workbook</button>
+    </section>
+  </main>
+
+<!-- ============ BUDGET PLANNER ============ -->
+  <main class="wrap" id="planner" hidden>
+    <section class="panel" id="pl-empty" hidden>
+      <form class="pl-form" id="pl-create" novalidate>
+        <div><div class="flabel">New budget plan</div><h2 id="plc-title">Plan next year's budget</h2></div>
+        <p>Starts a working copy of every line item from the year you pick, which you can edit month by month, then export to Excel for finance. The plan saves automatically.</p>
+        <div class="fields">
+          <label><span class="flabel">Based on</span><select id="plc-base"></select></label>
+          <label><span class="flabel">Plan year</span><input id="plc-year" type="text" inputmode="numeric" maxlength="4"></label>
+          <label><span class="flabel">Starting amounts</span><select id="plc-mode"><option value="forecast">Full-year forecast (actuals + projections)</option><option value="blank">Blank (keep line items, $0)</option></select></label>
+          <label><span class="flabel">Across-the-board change %</span><input id="plc-pct" type="number" step="0.5" value="0"></label>
+          <label><span class="flabel">Total target budget (optional)</span><input id="plc-target" type="text" inputmode="decimal" placeholder="e.g. 4,500,000"></label>
+          <label><span class="flabel">Monthly spread</span><select id="plc-spread"><option value="pattern">Same monthly pattern</option><option value="even">Even across 12 months</option></select></label>
+        </div>
+        <div class="msg err" id="plc-err" hidden></div>
+        <div><button class="btn" id="plc-go" type="submit">Create plan</button></div>
+      </form>
+    </section>
+    <div id="pl-body" hidden style="display:flex;flex-direction:column;gap:16px">
+      <section class="kpis" id="pl-kpis"></section>
+      <section class="panel">
+        <div class="ph"><h2>Cost-center targets</h2><span class="sub">Type a total in the bottom row to set the overall target; it splits across cost centers by their current share.</span><span class="savestate" id="pl-save"></span></div>
+        <div style="overflow-x:auto"><table class="mini" id="pl-centers"></table></div>
+      </section>
+      <section class="row" id="pl-lab">
+        <div class="panel" id="pl-tools">
+          <div class="ph"><h2>Scenario lab</h2>
+            <div class="toolbar">
+              <button class="btn ghost" id="sc-undo" type="button" hidden>↶ Undo last scenario</button>
+              <div class="seg" id="sc-tabs" role="group" aria-label="Scenario tools">
+                <button type="button" data-t="shift" aria-pressed="true">Shift budget</button>
+                <button type="button" data-t="target" aria-pressed="false">Hit target</button>
+                <button type="button" data-t="remove" aria-pressed="false">Remove lines</button>
+                <button type="button" data-t="log" aria-pressed="false">Change log</button>
+                <button type="button" data-t="snap" aria-pressed="false">Snapshots</button>
+              </div>
+            </div></div>
+
+          <details class="guide" id="sc-guide"><summary>How scenarios work</summary><div class="gb">
+            <div><h4>The basic loop</h4><p>Pick a tool, click <b>Preview</b> to see exactly what would change, then <b>Apply to plan</b>. Nothing touches the plan until you apply. Every apply saves a snapshot first, so <b>Undo last scenario</b> (or Snapshots &rarr; Restore) always gets you back.</p></div>
+            <div><h4>Shift budget: spend more somewhere</h4>
+              <ul><li><b>Increase:</b> choose an area (a group like Trade shows, or a single GL account). Use <b>+ Add another increase</b> to raise several areas in one scenario.</li>
+              <li><b>By:</b> a <b>%</b> of the area's current plan, a flat <b>$</b>, or <b>$ each &times; qty</b> (for example 4 KOLs at $15,000 each).</li>
+              <li><b>Add as a new line:</b> give it a name (e.g. "4 new KOLs") to add the money as its own line item. Leave it blank to spread the increase across the area's existing lines in proportion to their size.</li>
+              <li><b>Pay for it by:</b> <i>Cutting other accounts</i> keeps the total flat; <i>Cutting only enough to stay within target</i> only trims what pushes you over the target; <i>Adding to the total</i> makes no cuts.</li></ul></div>
+            <div><h4>Where cuts come from</h4>
+              <p>Every other line gets a flexibility weight. Cuts are shared out by <b>size &times; flexibility</b>, so large, flexible lines give the most. No line gives more than <b>Max cut per line</b>.</p>
+              <table><tr><th>Type of spend</th><th>Flexibility</th></tr><tr><td>Travel &amp; entertainment</td><td>Very high</td></tr><tr><td>Misc / ad hoc</td><td>Very high</td></tr><tr><td>One-time last year</td><td>High</td></tr><tr><td>Annual show / event, variable spend</td><td>Medium</td></tr><tr><td>Subscriptions &amp; tools</td><td>Low</td></tr><tr><td>Recurring commitments (retainers, contracts)</td><td>Very low; none while "Protect" is ticked</td></tr></table>
+              <p style="margin-top:6px">In the preview, <b>untick any line to protect it</b> and its cut moves to the others. <b>Take cuts from &rarr; Same cost center only</b> keeps the offset inside one cost center.</p></div>
+            <div><h4>Hit target</h4><p>When a cost center or the whole plan is over its target, this suggests cuts that close exactly the gap, using the same flexibility rules. Use <b>Never cut</b> to fence off an area. Targets are set in the table above; type a total in its bottom row and it is split across cost centers.</p></div>
+            <div><h4>Remove lines</h4><p>Tick line items to drop them (or set them to $0). The preview shows the savings and how the plan compares to target. This is how to take out a vendor or sponsorship you are no longer funding. The &times; button on a line in the grid does the same for a single line.</p></div>
+            <div><h4>Snapshots</h4><p>Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
+          </div></details>
+
+          <div id="sc-shift" class="sc-pane">
+            <p class="sc-lede">Grow one or more areas and let the planner suggest where the money comes from. Nothing changes until you apply it.</p>
+            <div id="sc-incs">
+              <div class="inc" id="sc-inc0">
+                <label><span class="flabel">Increase</span><select id="sc-grp" class="inc-grp"></select></label>
+                <label><span class="flabel">By</span><span class="inl"><input id="sc-amt" class="inc-amt" type="number" step="1" value="10" aria-label="Amount"><select id="sc-unit" class="inc-unit" aria-label="Unit"><option value="pct">%</option><option value="usd">$</option><option value="ea">$ each × qty</option></select><input class="inc-qty" id="sc-qty" type="number" min="1" step="1" value="1" aria-label="Quantity" hidden></span></label>
+                <label><span class="flabel">Add as a new line (optional)</span><input class="inc-new" id="sc-new" type="text" placeholder="e.g. 4 new KOLs" aria-label="New line name"></label>
+              </div>
+              <div id="sc-more"></div>
+            </div>
+            <div><button class="btn ghost" id="sc-addinc" type="button">+ Add another increase</button></div>
+            <div class="fields">
+              <label><span class="flabel">Pay for it by</span><select id="sc-fund">
+                <option value="flat">Cutting other accounts (total stays flat)</option>
+                <option value="target">Cutting only enough to stay within target</option>
+                <option value="none">Adding to the total (no cuts)</option></select></label>
+              <label><span class="flabel">Take cuts from</span><select id="sc-from"><option value="all">All other accounts</option><option value="same">Same cost center only</option></select></label>
+              <label><span class="flabel">Max cut per line</span><select id="sc-cap"><option>10</option><option>15</option><option>20</option><option selected>25</option><option>35</option><option>50</option></select></label>
+            </div>
+            <label class="chk"><input type="checkbox" id="sc-protect" checked> Protect recurring monthly commitments (retainers, contracts, catalogs)</label>
+            <div class="sc-quick" id="sc-quick"></div>
+            <div><button class="btn" id="sc-run" type="button">Preview scenario</button></div>
+          </div>
+
+          <div id="sc-target" class="sc-pane" hidden>
+            <p class="sc-lede" id="sc-gap"></p>
+            <div class="fields">
+              <label><span class="flabel">Scope</span><select id="sc-scope"></select></label>
+              <label><span class="flabel">Max cut per line</span><select id="sc-cap2"><option>10</option><option>15</option><option selected>20</option><option>25</option><option>35</option><option>50</option></select></label>
+              <label><span class="flabel">Never cut</span><select id="sc-keep"></select></label>
+            </div>
+            <label class="chk"><input type="checkbox" id="sc-protect2" checked> Protect recurring monthly commitments</label>
+            <div><button class="btn" id="sc-run2" type="button">Suggest cuts</button></div>
+          </div>
+
+          <div id="sc-remove" class="sc-pane" hidden>
+            <p class="sc-lede">Drop line items you no longer plan to spend on (for example a vendor or sponsorship you are ending). Tick the lines, preview the savings, then apply.</p>
+            <div class="toolbar"><input id="sc-rmq" type="search" placeholder="Filter lines" aria-label="Filter lines to remove" style="flex:1;min-width:200px">
+              <select id="sc-rmmode" aria-label="How to remove"><option value="remove">Remove the line completely</option><option value="zero">Keep the line, set to $0</option></select></div>
+            <div class="rmlist" id="sc-rmlist"></div>
+            <div class="sub" id="sc-rmsum"></div>
+            <div><button class="btn" id="sc-run3" type="button">Preview removal</button></div>
+          </div>
+
+          <div id="sc-log" class="sc-pane" hidden>
+            <p class="sc-lede">Every applied scenario, removed line, undo and restore, newest first, with the effect on the plan total. Typing directly into the grid is not logged.</p>
+            <div style="overflow-x:auto"><table class="mini" id="sc-logt"></table></div>
+          </div>
+
+          <div id="sc-snap" class="sc-pane" hidden>
+            <p class="sc-lede">Save the plan as it stands, try ideas, then compare or roll back. Applying a scenario saves a snapshot automatically.</p>
+            <div class="toolbar"><input id="sc-snapname" type="text" placeholder="Snapshot name, e.g. Board draft v1" aria-label="Snapshot name" style="flex:1;min-width:200px"><button class="btn" id="sc-snapsave" type="button">Save snapshot</button></div>
+            <div style="overflow-x:auto;margin-top:12px"><table class="mini" id="sc-snaps"></table></div>
+            <div id="sc-cmp" style="margin-top:14px"></div>
+          </div>
+
+          <div id="sc-preview" hidden></div>
+        </div>
+        <div class="panel" id="pl-insights">
+          <div class="ph"><h2>Insights</h2><span class="sub">Updates as you edit</span></div>
+          <ul class="ins" id="ins"></ul>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Line items</h2>
+          <div class="toolbar">
+            <input id="pl-q" type="search" placeholder="Filter line items" aria-label="Filter line items">
+            <select id="pl-c" aria-label="Cost center"></select>
+            <div class="adj" id="pl-adj"><span class="flabel">Adjust shown rows</span><input id="pl-pct" type="number" step="0.5" placeholder="%" aria-label="Percent change"><button class="btn ghost" id="pl-apply" type="button">Apply %</button></div>
+            <button class="btn ghost" id="pl-expand" type="button">Collapse all</button>
+          </div></div>
+        <div class="tablewrap"><table class="ledger pgrid" id="pl-grid"></table></div>
+        <p class="hint">Type over any month, or type a new full-year total to rescale that row's months. Use "Add line" on a GL account for new spend. Changes save automatically.</p>
+      </section>
+      <section class="panel toolbar" style="justify-content:space-between">
+        <div class="toolbar">
+          <button class="btn" id="pl-export" type="button">Export to Excel</button>
+          <button class="btn ghost" id="pl-submit" type="button"></button>
+        </div>
+        <button class="btn ghost" id="pl-delete" type="button">Delete plan</button>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ============ IMPORT DIALOG ============ -->
+<dialog id="dlg-import" aria-labelledby="imp-h">
+  <div class="dlg">
+    <div class="dlg-h"><h2 id="imp-h">Import spend data</h2><button class="x" data-close aria-label="Close">×</button></div>
+    <div class="dlg-b">
+      <label class="drop" id="drop" for="file">
+        <strong>Choose the Marketing workbook</strong>
+        <span>or drop an .xlsx file here</span>
+        <span class="cmp" id="file-name"></span>
+      </label>
+      <input id="file" type="file" accept=".xlsx,.xlsm,.xls" hidden>
+      <div class="msg err" id="imp-err" hidden></div>
+      <div id="imp-preview" hidden>
+        <div class="fields">
+          <label><span class="flabel">Tab</span><select id="imp-sheet"></select></label>
+          <label><span class="flabel">Year</span><input id="imp-year" type="text" inputmode="numeric" maxlength="4"></label>
+          <label><span class="flabel">Actuals through</span><select id="imp-act"></select></label>
+        </div>
+        <div class="stats" id="imp-stats" style="margin-top:14px"></div>
+        <div style="margin-top:14px">
+          <div class="flabel" style="margin-bottom:6px">Cost centers &amp; budgets</div>
+          <div style="overflow-x:auto"><table class="mini" id="imp-centers"></table></div>
+        </div>
+        <div id="imp-cmp" class="cmp" style="margin-top:10px"></div>
+        <div id="imp-warn-wrap" style="margin-top:12px" hidden>
+          <div class="msg warn" style="margin-bottom:6px">Check these before publishing</div>
+          <ul class="warnlist" id="imp-warn"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-f">
+      <button class="btn ghost" data-close type="button">Cancel</button>
+      <button class="btn" id="imp-go" type="button" disabled>Publish to dashboard</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ HISTORY DIALOG ============ -->
+<dialog id="dlg-history" aria-labelledby="his-h">
+  <div class="dlg">
+    <div class="dlg-h"><h2 id="his-h">Import history</h2><button class="x" data-close aria-label="Close">×</button></div>
+    <div class="dlg-b"><div style="overflow-x:auto"><table class="mini" id="his-tbl"></table></div></div>
+    <div class="dlg-f"><button class="btn ghost" data-close type="button">Close</button></div>
+  </div>
+</dialog>
+
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module">
+/* =====================================================================
+   1. BACKEND — Firebase (Auth + Firestore) or local preview fallback
+   Firestore layout:
+     datasets/{year}                 current published data for that year
+     datasets/{year}/imports/{id}    snapshot of every import (history/restore)
+     plans/{year}                    editable budget plan (Budget planner tab)
+     admins/{email}                  presence = may import/edit (see firestore.rules)
+   ===================================================================== */
+const CFG = window.FIREBASE_CONFIG || {};
+const PREVIEW = !CFG.apiKey || CFG.apiKey.startsWith("PASTE");
+const FBV = "https://www.gstatic.com/firebasejs/10.12.2/";
+
+function localBackend() {
+  const K = "acteon-mkt-spend:";
+  const get = (k, d) => { try { return JSON.parse(localStorage.getItem(K + k)) ?? d; } catch (e) { return d; } };
+  const put = (k, v) => { try { localStorage.setItem(K + k, JSON.stringify(v)); } catch (e) { toast("This browser blocked saving; data will reset on reload."); } };
+  let mem = {};
+  return {
+    preview: true,
+    async init(cb) { cb({ email: "Preview mode" }); },
+    async isAdmin() { return true; },
+    async listYears() { return Object.keys(get("datasets", mem)).sort(); },
+    async load(y) { return get("datasets", mem)[y] || null; },
+    async publish(d) {
+      const all = get("datasets", mem); all[d.year] = d; mem = all; put("datasets", all);
+      const h = get("history", {}); (h[d.year] = h[d.year] || []).unshift({ id: String(Date.now()), ...d }); h[d.year] = h[d.year].slice(0, 15); put("history", h);
+    },
+    async history(y) { return (get("history", {})[y] || []); },
+    async listPlans() { return Object.keys(get("plans", {})).sort(); },
+    async loadPlan(y) { return get("plans", {})[y] || null; },
+    async savePlan(p) { const all = get("plans", {}); all[p.year] = p; put("plans", all); },
+    async deletePlan(y) { const all = get("plans", {}); delete all[y]; put("plans", all); },
+    async restore(y, id) { const s = (get("history", {})[y] || []).find(x => x.id === id); if (!s) throw new Error("Snapshot not found"); const { id: _, ...d } = s; const all = get("datasets", mem); all[y] = { ...d, restoredAt: new Date().toISOString() }; put("datasets", all); },
+  };
+}
+
+async function firebaseBackend() {
+  const [{ initializeApp }, A, F] = await Promise.all([
+    import(FBV + "firebase-app.js"), import(FBV + "firebase-auth.js"), import(FBV + "firebase-firestore.js")]);
+  const app = initializeApp(CFG), auth = A.getAuth(app), db = F.getFirestore(app);
+  return {
+    preview: false,
+    init(cb) { A.onAuthStateChanged(auth, u => cb(u)); },
+    signIn: (e, p) => A.signInWithEmailAndPassword(auth, e, p),
+    signOut: () => A.signOut(auth),
+    reset: e => A.sendPasswordResetEmail(auth, e),
+    async isAdmin() {
+      const e = auth.currentUser?.email?.toLowerCase(); if (!e) return false;
+      try { return (await F.getDoc(F.doc(db, "admins", e))).exists(); } catch (err) { return false; }
+    },
+    async listYears() { const s = await F.getDocs(F.collection(db, "datasets")); return s.docs.map(d => d.id).sort(); },
+    async load(y) { const s = await F.getDoc(F.doc(db, "datasets", y)); return s.exists() ? s.data() : null; },
+    async publish(d) {
+      const b = F.writeBatch(db);
+      b.set(F.doc(db, "datasets", d.year), d);
+      b.set(F.doc(F.collection(db, "datasets", d.year, "imports")), d);
+      await b.commit();
+    },
+    async history(y) {
+      const q = F.query(F.collection(db, "datasets", y, "imports"), F.orderBy("importedAt", "desc"), F.limit(15));
+      return (await F.getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+    async listPlans() { const s = await F.getDocs(F.collection(db, "plans")); return s.docs.map(d => d.id).sort(); },
+    async loadPlan(y) { const s = await F.getDoc(F.doc(db, "plans", y)); return s.exists() ? s.data() : null; },
+    async savePlan(p) { await F.setDoc(F.doc(db, "plans", p.year), p); },
+    async deletePlan(y) { await F.deleteDoc(F.doc(db, "plans", y)); },
+    async restore(y, id) {
+      const s = await F.getDoc(F.doc(db, "datasets", y, "imports", id)); if (!s.exists()) throw new Error("Snapshot not found");
+      await F.setDoc(F.doc(db, "datasets", y), { ...s.data(), restoredAt: new Date().toISOString(), restoredBy: auth.currentUser?.email || "" });
+    },
+  };
+}
+
+/* =====================================================================
+   2. WORKBOOK PARSER — reads a year tab laid out like "Marketing 2026"
+   Finds the JAN…DEC header row, uses the row above it (ACTUAL / Projection,
+   TOTAL BUDGET) to classify columns, then walks cost centers → GL accounts
+   → line items. Totals are always recomputed from the months.
+   ===================================================================== */
+const MON = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const str = v => v == null ? "" : String(v).replace(/\s+/g, " ").trim();
+const numv = v => typeof v === "number" && isFinite(v) ? v : (typeof v === "string" && v.trim() !== "" && isFinite(+v.replace(/[$,]/g, "")) ? +v.replace(/[$,]/g, "") : null);
+const r2 = v => Math.round(v * 100) / 100;
+
+function parseSheet(rows, sheetName) {
+  // header row
+  let hr = -1;
+  for (let i = 0; i < Math.min(rows.length, 40); i++) {
+    const u = (rows[i] || []).map(c => str(c).toUpperCase());
+    if (u.includes("JAN") && u.includes("FEB") && u.some(x => x.startsWith("DEC"))) { hr = i; break; }
+  }
+  if (hr < 0) throw new Error(`Couldn't find a JAN–DEC header row on tab "${sheetName}". Pick the year tab (for example "2026").`);
+  const H = (rows[hr] || []).map(c => str(c).toUpperCase()), K = (rows[hr - 1] || []).map(c => str(c).toUpperCase());
+  const mcol = MON.map(m => H.findIndex(h => h.startsWith(m)));
+  if (mcol.some(c => c < 0)) throw new Error("The header row is missing one or more months.");
+  let labelCol = H.indexOf("CATEGORY"); if (labelCol < 0) labelCol = Math.max(0, mcol[0] - 1);
+  const kinds = mcol.map(c => (K[c] || "").startsWith("ACTUAL") ? "A" : "P");
+  let act = 0; kinds.forEach((k, i) => { if (k === "A") act = i + 1; });
+  const budgetCol = K.findIndex(k => k.includes("TOTAL BUDGET"));
+  const totActCol = K.findIndex(k => k.includes("TOTAL ACTUAL"));
+
+  const centers = [], items = [], glNames = {}, launch = [], glTotals = {}, warnings = [];
+  let center = null, gl = null;
+  for (let i = hr + 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const pre = r.slice(0, labelCol + 1).map(str).find(s => /COST CENTER/i.test(s));
+    if (pre) { const name = pre.replace(/COST CENTER/i, "").trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) || `Center ${centers.length + 1}`; center = { k: "c" + centers.length, name, budget: 0 }; centers.push(center); gl = null; continue; }
+    const label = str(r[labelCol]);
+    if (!label || !center) continue;
+    const m = mcol.map(c => numv(r[c]));
+    const glm = label.match(/^(\d{4,6}-\d{2}-\d{2})\s+(.+)$/);
+    if (glm && m.every(v => v == null)) { gl = glm[1]; glNames[gl] = glm[2].trim(); continue; }
+    if (/^total .*(by month|expenses)/i.test(label)) { if (budgetCol >= 0) center.budget = numv(r[budgetCol]) || center.budget; continue; }
+    if (/^totals? for/i.test(label) || /^difference$/i.test(label)) continue;
+    if (/^gl total/i.test(label)) { if (gl) glTotals[gl] = m.map(v => v || 0); continue; }
+    if (/^launch budget/i.test(label)) { if (gl && m.some(v => v)) launch.push({ g: gl, m: m.map(v => r2(v || 0)) }); continue; }
+    if (!gl) continue;
+    const mm = m.map(v => r2(v || 0));
+    const cached = totActCol >= 0 ? numv(r[totActCol]) : null, s = r2(mm.slice(0, act).reduce((a, b) => a + b, 0));
+    if (cached != null && Math.abs(cached - s) > 0.5) warnings.push({ t: "total", g: gl, n: label, cached, s });
+    if (!mm.some(v => v !== 0)) continue;
+    items.push({ c: center.k, g: gl, n: label, m: mm });
+  }
+  if (!items.length) throw new Error("No line items found on this tab.");
+  // reconcile line items (+ launch transfers) against GL totals, per month
+  const recon = [];
+  Object.entries(glTotals).forEach(([g, gt]) => {
+    for (let i = 0; i < act; i++) {
+      const s = items.filter(x => x.g === g).reduce((a, x) => a + x.m[i], 0) + launch.filter(l => l.g === g).reduce((a, l) => a + l.m[i], 0);
+      const d = r2(s - gt[i]); if (Math.abs(d) > 0.5) recon.push({ g, mo: i, d });
+    }
+  });
+  const usedCenters = centers.filter(c => items.some(x => x.c === c.k));
+  const year = (sheetName.match(/(20\d{2})/) || [])[1] || "";
+  return { year, sheet: sheetName, act, centers: usedCenters, gls: glNames, items, launch, recon, warnings };
+}
+
+/* =====================================================================
+   3. DASHBOARD
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const sum = a => a.reduce((x, y) => x + y, 0);
+const usd = v => (v < 0 ? "−$" : "$") + Math.abs(Math.round(v)).toLocaleString("en-US");
+const k = v => { const a = Math.abs(v), s = v < 0 ? "−$" : "$"; return a >= 1e6 ? s + (a / 1e6).toFixed(2) + "M" : a >= 1e3 ? s + (a / 1e3).toFixed(a >= 1e5 ? 0 : 1) + "K" : s + Math.round(a); };
+const bm = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(3).replace(/0+$/, "").replace(/\.$/, "") + "M" : k(v);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtDate = iso => { try { return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) { return iso; } };
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 3500); }
+
+let B = null, ADMIN = false, D = null;
+let ITEMS = [], GLS = {}, ACT = 9, CENTERS = [], GL_ORDER = [];
+const st = { c: "all", g: "all", q: "", ord: "sheet", closed: new Set() };
+
+const fy = r => sum(r.m), ytd = r => sum(r.m.slice(0, ACT)), q4 = r => sum(r.m.slice(ACT));
+const cIdx = c => Math.max(0, CENTERS.findIndex(x => x.k === c)) % 4;
+const col = c => `var(--s${cIdx(c) + 1})`;
+const cname = c => (CENTERS.find(x => x.k === c) || {}).name || c;
+const glCenter = g => ITEMS.find(r => r.g === g).c;
+const rng = (a, b) => a === b ? MONTHS[a] : `${MONTHS[a]}–${MONTHS[b]}`;
+
+function setData(d) {
+  D = d; ITEMS = d.items; GLS = d.gls; ACT = d.act; CENTERS = d.centers;
+  GL_ORDER = [...new Set(ITEMS.map(r => r.g))];
+  st.closed = new Set(GL_ORDER);
+  if (st.c !== "all" && !CENTERS.some(c => c.k === st.c)) st.c = "all";
+  if (!GL_ORDER.includes(st.g)) st.g = "all";
+  setHeader(d);
+  $("#seg").innerHTML = `<button type="button" data-c="all">All</button>` + CENTERS.map(c => `<button type="button" data-c="${c.k}"><span class="sw" style="background:${col(c.k)}"></span>${esc(c.name)}</button>`).join("");
+  buildGL(); render(); renderNotes();
+}
+function setHeader(d) {
+  const tb = sum(d.centers.map(c => c.budget || 0));
+  $("#h-title").textContent = `Marketing Spend ${d.year}`;
+  document.title = `Acteon Marketing Spend ${d.year}`;
+  $("#h-sub").textContent = `Actuals ${rng(0, d.act - 1)}` + (d.act < 12 ? ` · Projections ${rng(d.act, 11)}` : "") + (tb ? ` · Budget ${bm(tb)}` : "");
+  $("#h-upd").textContent = `Updated ${fmtDate(d.restoredAt || d.importedAt)}` + (d.importedBy ? ` by ${d.importedBy}` : "") + ` · ${d.fileName || "workbook"}, tab "${d.sheet}"` + (d.restoredAt ? " (restored)" : "");
+}
+
+function rows() {
+  const q = st.q.trim().toLowerCase();
+  return ITEMS.filter(r => (st.c === "all" || r.c === st.c) && (st.g === "all" || r.g === st.g) && (!q || r.n.toLowerCase().includes(q)));
+}
+function budget() {
+  if (st.g !== "all" || st.q.trim()) return null;
+  const b = st.c === "all" ? sum(CENTERS.map(c => c.budget || 0)) : (CENTERS.find(c => c.k === st.c) || {}).budget;
+  return b > 0 ? b : null;
+}
+
+/* tooltip */
+const tip = $("#tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect(); let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => tip.hidden = true;
+const trow = (l, v, c) => `<div class="tr"><span>${c ? `<span class="sw" style="background:${c}"></span> ` : ""}${esc(l)}</span><span class="num">${v}</span></div>`;
+
+/* filters */
+function buildGL() {
+  const gs = GL_ORDER.filter(g => st.c === "all" || glCenter(g) === st.c);
+  if (st.g !== "all" && !gs.includes(st.g)) st.g = "all";
+  $("#gl").innerHTML = `<option value="all">All GL accounts</option>` + gs.map(g => `<option value="${esc(g)}">${esc(g)} · ${esc(GLS[g])}</option>`).join("");
+  $("#gl").value = st.g;
+}
+$("#seg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; st.c = b.dataset.c; buildGL(); render(); });
+$("#gl").addEventListener("change", e => { st.g = e.target.value; render(); });
+$("#q").addEventListener("input", e => { st.q = e.target.value; render(); });
+$("#ord").addEventListener("change", e => { st.ord = e.target.value; renderTable(rows()); });
+$("#reset").addEventListener("click", () => { st.c = "all"; st.g = "all"; st.q = ""; $("#q").value = ""; buildGL(); render(); });
+$("#expand").addEventListener("click", () => {
+  const gs = [...new Set(rows().map(r => r.g))];
+  if (gs.every(g => !st.closed.has(g))) gs.forEach(g => st.closed.add(g)); else gs.forEach(g => st.closed.delete(g));
+  renderTable(rows());
+});
+
+/* KPIs */
+function renderKPIs(rs) {
+  const A = sum(rs.map(ytd)), P = sum(rs.map(q4)), F = A + P, Bd = budget();
+  const bLabel = st.c === "all" ? "total budget" : cname(st.c) + " budget";
+  let fySub, varCard;
+  if (Bd) {
+    const d = F - Bd, pa = Math.min(100, Math.max(0, A / Bd * 100)), pp = Math.max(0, Math.min(100 - pa, P / Bd * 100));
+    fySub = `<div class="meter" aria-hidden="true"><i class="a" style="width:${pa}%"></i><i class="p" style="left:${pa}%;width:${pp}%"></i></div><span class="s">${(F / Bd * 100).toFixed(1)}% of ${bm(Bd)} ${esc(bLabel)}</span>`;
+    varCard = `<div class="panel kpi"><span class="k">Forecast vs budget</span><span class="v num">${d >= 0 ? "+" : "−"}${usd(Math.abs(d))}</span>
+      <span class="pill ${d > 0 ? "over" : "under"}">${d > 0 ? "▲ Over budget" : "▼ Under budget"}</span>
+      <span class="s">${d > 0 ? (ACT < 12 ? "Projections land " : "Spend landed ") + usd(d) + " past budget" : usd(Bd - F) + " left" + (ACT < 12 ? " after projections" : "")}</span></div>`;
+  } else {
+    fySub = `<span class="s">${budget() === null && (st.g !== "all" || st.q.trim()) ? "Budget is set per cost center" : "No budget found in the workbook"}</span>`;
+    const all = sum(ITEMS.map(fy));
+    varCard = `<div class="panel kpi"><span class="k">Share of all ${esc(D.year)} spend</span><span class="v num">${all ? (F / all * 100).toFixed(1) : "0.0"}%</span>
+      <span class="pill na">Filtered view</span><span class="s">${rs.length} line item${rs.length === 1 ? "" : "s"}</span></div>`;
+  }
+  const best = MONTHS.slice(0, ACT).map((m, i) => [m, sum(rs.map(r => r.m[i]))]).sort((a, b) => b[1] - a[1])[0];
+  $("#kpis").innerHTML = `
+    <div class="panel kpi"><span class="k">Full-year forecast</span><span class="v num">${usd(F)}</span>${fySub}</div>
+    <div class="panel kpi"><span class="k">Actual spend, ${rng(0, ACT - 1)}</span><span class="v num">${usd(A)}</span>
+      <span class="s">Avg ${k(A / ACT)}/month · peak ${best ? best[0] + " " + k(best[1]) : "–"}</span></div>
+    <div class="panel kpi"><span class="k">${ACT < 12 ? "Projected, " + rng(ACT, 11) : "Projected"}</span><span class="v num">${usd(P)}</span>
+      <span class="s">${rs.filter(r => q4(r) !== 0).length} line items with projected spend</span></div>
+    ${varCard}`;
+}
+
+/* SVG helpers */
+function svg(el, w, h) { el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" height="${h}" role="img"></svg>`; return el.firstChild; }
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+function ticks(lo, hi, n = 4) { const step = niceMax((hi - lo) / n); const out = []; for (let t = Math.ceil(lo / step) * step; t <= hi + 1e-6; t += step) out.push(t); return out; }
+const defs = () => `<defs>${[1, 2, 3, 4].map(i => `<pattern id="h${i}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="5" fill="var(--s${i})" opacity=".28"/><rect width="2" height="5" fill="var(--s${i})"/></pattern>`).join("")}</defs>`;
+const hatch = c => `url(#h${cIdx(c) + 1})`;
+function barPath(x, y0, y1, w, r = 3) {
+  const top = Math.min(y0, y1), bot = Math.max(y0, y1), h = bot - top; if (h < 0.5) return "";
+  r = Math.min(r, h, w / 2); const up = y1 < y0;
+  return up ? `M${x},${bot}V${top + r}Q${x},${top} ${x + r},${top}H${x + w - r}Q${x + w},${top} ${x + w},${top + r}V${bot}Z`
+            : `M${x},${top}V${bot - r}Q${x},${bot} ${x + r},${bot}H${x + w - r}Q${x + w},${bot} ${x + w},${bot - r}V${top}Z`;
+}
+
+/* monthly stacked bars */
+function renderMonthly(rs) {
+  const el = $("#c-month"), W = Math.max(300, el.clientWidth), H = 280, L = 48, R = 8, T = 22, Bm = 26;
+  const cs = st.c === "all" ? CENTERS.map(c => c.k) : [st.c];
+  const data = MONTHS.map((m, i) => { const o = { m, i }; cs.forEach(c => o[c] = sum(rs.filter(r => r.c === c).map(r => r.m[i]))); return o; });
+  const pos = data.map(d => sum(cs.map(c => Math.max(0, d[c])))), neg = data.map(d => sum(cs.map(c => Math.min(0, d[c]))));
+  const hi = niceMax(Math.max(...pos, 1)), lo = Math.min(...neg) < 0 ? -niceMax(-Math.min(...neg)) : 0;
+  const y = v => T + (hi - v) / (hi - lo) * (H - T - Bm), bw = (W - L - R) / 12, w = Math.max(6, Math.min(34, bw * .62));
+  let g = defs();
+  ticks(lo, hi).forEach(t => g += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${k(t)}</text>`);
+  if (ACT < 12) { const px = L + bw * ACT; g += `<rect x="${px}" y="${T - 16}" width="${W - R - px}" height="${H - T - Bm + 16}" fill="var(--surface-2)" opacity=".7"/><text x="${px + 6}" y="${T - 4}" class="lbl" style="font-size:10px;letter-spacing:.08em">PROJECTED</text>`; }
+  data.forEach((d, i) => {
+    const x = L + bw * i + (bw - w) / 2; let up = 0, dn = 0;
+    cs.forEach((c, ci) => {
+      const v = d[c]; if (!v) return;
+      const fill = i >= ACT ? hatch(c) : col(c);
+      const last = cs.slice(ci + 1).every(cc => !(d[cc] > 0));
+      if (v > 0) { const y0 = y(up), y1 = y(up + v); g += last ? `<path d="${barPath(x, y0, y1, w)}" fill="${fill}"/>` : `<rect x="${x}" y="${y1}" width="${w}" height="${Math.max(0, y0 - y1 - 2)}" fill="${fill}"/>`; up += v; }
+      else { const y0 = y(dn), y1 = y(dn + v); g += `<path d="${barPath(x, y0, y1, w)}" fill="${fill}"/>`; dn += v; }
+    });
+    const tot = sum(cs.map(c => d[c]));
+    if (W > 520 && tot) g += `<text x="${x + w / 2}" y="${y(Math.max(0, up)) - 5}" text-anchor="middle" class="val" style="font-size:10px">${k(tot)}</text>`;
+    g += `<text x="${L + bw * i + bw / 2}" y="${H - 8}" text-anchor="middle">${W < 420 ? d.m[0] : d.m}</text>`;
+    g += `<rect class="hit" data-i="${i}" x="${L + bw * i}" y="${T - 16}" width="${bw}" height="${H - T - Bm + 16}"/>`;
+  });
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ink-3)"/>`;
+  const s = svg(el, W, H); s.innerHTML = g; s.setAttribute("aria-label", "Monthly spend by cost center");
+  s.querySelectorAll(".hit").forEach(h => {
+    h.addEventListener("mousemove", e => { const d = data[+h.dataset.i];
+      showTip(e, `<b>${d.m} ${esc(D.year)} · ${d.i >= ACT ? "Projected" : "Actual"}</b>` + cs.map(c => trow(cname(c), usd(d[c]), col(c))).join("") + (cs.length > 1 ? trow("Total", usd(sum(cs.map(c => d[c])))) : "")); });
+    h.addEventListener("mouseleave", hideTip);
+  });
+  $("#lg1").innerHTML = cs.map(c => `<span><i class="sw" style="background:${col(c)}"></i>${esc(cname(c))}</span>`).join("") + (ACT < 12 ? `<span><i class="hatch"></i>Projected</span>` : "");
+}
+
+/* cumulative vs budget */
+function renderCum(rs) {
+  const el = $("#c-cum"), W = Math.max(280, el.clientWidth), H = 280, L = 52, R = 14, T = 22, Bm = 26, Bud = budget();
+  let c = 0; const cum = MONTHS.map((m, i) => (c += sum(rs.map(r => r.m[i]))));
+  const hi = niceMax(Math.max(...cum, Bud || 0, 1) * 1.04), lo = Math.min(0, ...cum);
+  const x = i => L + (W - L - R) * i / 11, y = v => T + (hi - v) / (hi - lo) * (H - T - Bm);
+  let g = "";
+  ticks(lo, hi).forEach(t => g += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="var(--grid)"/><text x="${L - 8}" y="${y(t) + 4}" text-anchor="end">${k(t)}</text>`);
+  MONTHS.forEach((m, i) => { if (W > 420 || i % 2 === 0) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${m}</text>`; });
+  if (Bud) g += `<line x1="${L}" x2="${W - R}" y1="${y(Bud)}" y2="${y(Bud)}" stroke="var(--ink-2)" stroke-dasharray="4 4"/><text x="${L + 4}" y="${y(Bud) - 6}" class="lbl">Budget ${bm(Bud)}</text>`;
+  const pa = cum.slice(0, ACT).map((v, i) => `${i ? "L" : "M"}${x(i)},${y(v)}`).join("");
+  const pp = ACT < 12 ? cum.slice(ACT - 1).map((v, i) => `${i ? "L" : "M"}${x(i + ACT - 1)},${y(v)}`).join("") : "";
+  g += `<path d="${pa}L${x(ACT - 1)},${y(0)}L${x(0)},${y(0)}Z" fill="var(--accent)" opacity=".12"/>`;
+  g += `<path d="${pa}" fill="none" stroke="var(--accent)" stroke-width="2"/>` + (pp ? `<path d="${pp}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>` : "");
+  const end = cum[11], over = Bud && end > Bud;
+  if (ACT < 12) g += `<circle cx="${x(ACT - 1)}" cy="${y(cum[ACT - 1])}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  g += `<circle cx="${x(11)}" cy="${y(end)}" r="4.5" fill="${over ? "var(--bad)" : "var(--accent)"}" stroke="var(--surface)" stroke-width="2"/>`;
+  g += `<text x="${x(11) - 8}" y="${y(end) + (Bud && Math.abs(y(end) - y(Bud)) < 16 ? 18 : -9)}" text-anchor="end" class="val">${k(end)}</text>`;
+  g += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - Bm}" stroke="var(--ink-3)" visibility="hidden"/><rect class="hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - Bm}"/>`;
+  const s = svg(el, W, H); s.innerHTML = g; s.setAttribute("aria-label", "Cumulative spend against budget");
+  const hit = s.querySelector(".hit"), xh = s.querySelector(".xh");
+  hit.addEventListener("mousemove", e => {
+    const r = s.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width, i = Math.max(0, Math.min(11, Math.round((px - L) / (W - L - R) * 11)));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    showTip(e, `<b>Through ${MONTHS[i]} · ${i >= ACT ? "incl. projection" : "actual"}</b>` + trow("Cumulative", usd(cum[i])) + (Bud ? trow("Budget used", (cum[i] / Bud * 100).toFixed(1) + "%") + trow("Remaining", usd(Bud - cum[i])) : ""));
+  });
+  hit.addEventListener("mouseleave", () => { hideTip(); xh.setAttribute("visibility", "hidden"); });
+  $("#cum-sub").textContent = Bud ? (over ? `Ends ${k(end - Bud)} over` : `Ends ${k(Bud - end)} under`) : "No budget at this filter level";
+}
+
+/* horizontal bars */
+function hbars(el, list, opts) {
+  if (!list.length) { el.innerHTML = `<div class="empty">No spend matches these filters.</div>`; return; }
+  const W = Math.max(280, el.clientWidth), rowH = 30, T = 4, H = T + list.length * rowH + 4;
+  const labelW = Math.min(W * .42, 230), L = labelW + 10, R = 64;
+  const mx = Math.max(...list.map(d => d.a + Math.max(0, d.p)), 1), mn = Math.min(0, ...list.map(d => d.a));
+  const sx = v => L + (v - mn) / (mx - mn) * (W - L - R);
+  let g = defs();
+  list.forEach((d, i) => {
+    const yy = T + i * rowH, bh = 14, by = yy + (rowH - bh) / 2;
+    const maxCh = Math.floor(labelW / 6.4), name = d.label.length > maxCh ? d.label.slice(0, maxCh - 1) + "…" : d.label;
+    g += `<text x="0" y="${by + bh / 2 + 4}" class="lbl">${esc(name)}</text>`;
+    const x0 = sx(0), xa = sx(d.a), xp = sx(d.a + Math.max(0, d.p));
+    if (d.a >= 0) g += `<rect x="${x0}" y="${by}" width="${Math.max(0, xa - x0 - (d.p > 0 ? 2 : 0))}" height="${bh}" ${d.p > 0 ? "" : 'rx="3"'} fill="${d.color}"/>`;
+    else g += `<rect x="${xa}" y="${by}" width="${x0 - xa}" height="${bh}" rx="3" fill="${d.color}"/>`;
+    if (d.p > 0) g += `<rect x="${Math.max(x0, xa)}" y="${by}" width="${Math.max(1, xp - Math.max(x0, xa))}" height="${bh}" rx="3" fill="${d.hatch}"/>`;
+    g += `<text x="${Math.max(xp, x0) + 6}" y="${by + bh / 2 + 4}" class="val">${k(d.a + d.p)}</text>`;
+    g += `<rect class="hit" data-i="${i}" x="0" y="${yy}" width="${W}" height="${rowH}"/>`;
+  });
+  if (mn < 0) g += `<line x1="${sx(0)}" x2="${sx(0)}" y1="0" y2="${H}" stroke="var(--ink-3)"/>`;
+  const s = svg(el, W, H); s.innerHTML = g; s.setAttribute("aria-label", opts.aria);
+  s.querySelectorAll(".hit").forEach(h => {
+    const d = list[+h.dataset.i];
+    h.addEventListener("mousemove", e => showTip(e, `<b>${esc(d.title || d.label)}</b>` + trow(`Actual ${rng(0, ACT - 1)}`, usd(d.a)) + (ACT < 12 ? trow(`Projected ${rng(ACT, 11)}`, usd(d.p)) : "") + trow("Full year", usd(d.a + d.p)) + (d.extra || "")));
+    h.addEventListener("mouseleave", hideTip);
+    if (opts.click) h.addEventListener("click", () => { hideTip(); opts.click(d); });
+  });
+}
+function renderGL(rs) {
+  const list = GL_ORDER.map(g => { const r = rs.filter(x => x.g === g); return { g, c: glCenter(g), label: (GLS[g] || g).replace(/\s*\(.*\)/, ""), title: `${g} · ${GLS[g]}`, a: sum(r.map(ytd)), p: sum(r.map(q4)), n: r.length }; })
+    .filter(d => d.n).sort((a, b) => (b.a + b.p) - (a.a + a.p)).map(d => ({ ...d, color: col(d.c), hatch: hatch(d.c), extra: trow("Cost center", cname(d.c)) }));
+  hbars($("#c-gl"), list, { aria: "Full-year spend by GL account", click: d => { st.g = st.g === d.g ? "all" : d.g; if (st.c !== "all" && st.c !== d.c) st.c = d.c; buildGL(); render(); } });
+}
+function renderTop(rs) {
+  const list = rs.map(r => ({ c: r.c, label: r.n, title: r.n, a: ytd(r), p: q4(r), color: col(r.c), hatch: hatch(r.c), extra: trow("GL", r.g) + trow("Cost center", cname(r.c)) }))
+    .sort((a, b) => (b.a + b.p) - (a.a + a.p)).slice(0, 12);
+  hbars($("#c-top"), list, { aria: "Largest line items" });
+}
+
+/* ledger */
+function cell(v, cls = "") { const c = v < 0 ? "neg" : Math.abs(v) < 0.005 ? "zero" : ""; return `<td class="num ${cls} ${c}">${Math.abs(v) < 0.005 ? "–" : usd(v)}</td>`; }
+function renderTable(rs) {
+  const tbl = $("#tbl");
+  if (!rs.length) { tbl.innerHTML = `<tbody><tr><td class="empty">No line items match these filters.</td></tr></tbody>`; return; }
+  const P = i => i >= ACT ? "proj" : "";
+  let h = `<thead><tr><th>Line item</th>${MONTHS.map((m, i) => `<th class="${P(i)}">${m}${i >= ACT ? "*" : ""}</th>`).join("")}<th class="tot">${rng(0, ACT - 1)}</th><th class="tot">Full year</th></tr></thead><tbody>`;
+  let gs = [...new Set(rs.map(r => r.g))];
+  if (st.ord === "fy") gs.sort((a, b) => sum(rs.filter(r => r.g === b).map(fy)) - sum(rs.filter(r => r.g === a).map(fy)));
+  gs.forEach(g => {
+    let its = rs.filter(r => r.g === g); if (st.ord === "fy") its = [...its].sort((a, b) => fy(b) - fy(a));
+    const m = MONTHS.map((_, i) => sum(its.map(r => r.m[i]))), closed = st.closed.has(g);
+    h += `<tr class="gl ${closed ? "closed" : ""}" data-g="${esc(g)}" tabindex="0" aria-expanded="${!closed}"><td><span class="chev">▾</span><span class="code">${esc(g)}</span>${esc(GLS[g])}<span class="ctag">${esc(cname(glCenter(g)))}</span></td>${m.map((v, i) => cell(v, P(i))).join("")}${cell(sum(m.slice(0, ACT)), "tot")}${cell(sum(m), "tot")}</tr>`;
+    if (!closed) its.forEach(r => h += `<tr><td>${esc(r.n)}</td>${r.m.map((v, i) => cell(v, P(i))).join("")}${cell(ytd(r), "tot")}${cell(fy(r), "tot")}</tr>`);
+  });
+  const tm = MONTHS.map((_, i) => sum(rs.map(r => r.m[i])));
+  h += `<tr class="grand"><td>Total (${rs.length} line items)</td>${tm.map((v, i) => cell(v, P(i))).join("")}${cell(sum(tm.slice(0, ACT)), "tot")}${cell(sum(tm), "tot")}</tr></tbody>`;
+  tbl.innerHTML = h;
+  $("#expand").textContent = gs.every(g => !st.closed.has(g)) ? "Collapse all" : "Expand all";
+  tbl.querySelectorAll("tr.gl").forEach(tr => {
+    const tog = () => { const g = tr.dataset.g; st.closed.has(g) ? st.closed.delete(g) : st.closed.add(g); renderTable(rows()); };
+    tr.addEventListener("click", tog); tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tog(); } });
+  });
+}
+
+/* notes */
+function renderNotes() {
+  const n = [], glN = g => `<span class="code">${esc(g)}</span>${esc(GLS[g] || "")}`;
+  const L = (D.launch || []).filter(l => sum(l.m) !== 0);
+  if (L.length) n.push(`<div class="panel note"><h3><span class="dot" style="background:var(--accent)"></span>Launch budget transfers</h3>
+    <p>${k(sum(L.map(l => sum(l.m))))} was moved to the Launch Budget tab and is excluded from the figures above.</p>
+    <ul>${L.map(l => `<li>${glN(l.g)}: <span class="num">${usd(sum(l.m))}</span></li>`).join("")}</ul></div>`);
+  const R = D.recon || [];
+  n.push(`<div class="panel note"><h3><span class="dot" style="background:${R.length ? "var(--bad)" : "var(--good)"}"></span>GL reconciliation</h3>` +
+    (R.length ? `<p>Months where line items don't match the GL total yet.</p><ul>${R.map(r => `<li>${glN(r.g)} (${MONTHS[r.mo]}): <span class="num">${r.d > 0 ? "+" : ""}${usd(r.d)}</span></li>`).join("")}</ul>`
+              : `<p>Every GL account's line items match its GL total for ${rng(0, ACT - 1)}.</p>`) + `</div>`);
+  const Wn = (D.warnings || []).filter(w => w.t === "total");
+  n.push(`<div class="panel note"><h3><span class="dot" style="background:var(--ink-3)"></span>How totals are calculated</h3>
+    <p>Every figure is the sum of the monthly line items, not the workbook's TOTAL column.${Wn.length ? ` These rows had a TOTAL cell that didn't match their months when imported:` : ""}</p>
+    ${Wn.length ? `<ul>${Wn.slice(0, 8).map(w => `<li>${esc(w.n)}: TOTAL ${usd(w.cached)}, months ${usd(w.s)}</li>`).join("")}</ul>` : ""}</div>`);
+  $("#notes").innerHTML = n.join("");
+}
+
+function render() {
+  document.querySelectorAll("#seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === st.c));
+  const rs = rows();
+  renderKPIs(rs); renderMonthly(rs); renderCum(rs); renderGL(rs); renderTop(rs); renderTable(rs);
+}
+let rt; new ResizeObserver(() => { if (!D) return; clearTimeout(rt); rt = setTimeout(() => { const rs = rows(); renderMonthly(rs); renderCum(rs); renderGL(rs); renderTop(rs); }, 80); }).observe(document.body);
+
+/* =====================================================================
+   4. IMPORT FLOW
+   ===================================================================== */
+const dImp = $("#dlg-import"), dHis = $("#dlg-history");
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+let WB = null, FILE = "", PARSED = null;
+
+function openImport() {
+  WB = null; PARSED = null; FILE = ""; $("#file").value = ""; $("#file-name").textContent = "";
+  $("#imp-preview").hidden = true; $("#imp-err").hidden = true; $("#imp-go").disabled = true; $("#imp-go").textContent = "Publish to dashboard";
+  dImp.showModal();
+}
+$("#b-import").addEventListener("click", openImport);
+$("#nd-import").addEventListener("click", openImport);
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+$("#file").addEventListener("change", e => { const f = e.target.files[0]; if (f) readFile(f); });
+
+function impErr(m) { const el = $("#imp-err"); el.textContent = m; el.hidden = !m; }
+async function readFile(f) {
+  impErr(""); FILE = f.name; $("#file-name").textContent = f.name;
+  if (!window.XLSX) return impErr("The spreadsheet reader didn't load. Check your connection and reload the page.");
+  try {
+    WB = XLSX.read(await f.arrayBuffer(), { type: "array", cellDates: false });
+  } catch (e) { $("#imp-preview").hidden = true; return impErr("Couldn't open that file. Save it as .xlsx and try again."); }
+  const names = WB.SheetNames;
+  const thisYear = String(new Date().getFullYear());
+  const yearTabs = names.filter(n => /^\s*20\d{2}\s*$/.test(n));
+  const def = names.includes(D?.sheet) ? D.sheet : names.find(n => n.trim() === thisYear) || yearTabs.sort().pop() || names[0];
+  $("#imp-sheet").innerHTML = names.map(n => `<option ${n === def ? "selected" : ""}>${esc(n)}</option>`).join("");
+  parseCurrent();
+}
+$("#imp-sheet").addEventListener("change", parseCurrent);
+function parseCurrent() {
+  impErr(""); PARSED = null; $("#imp-go").disabled = true;
+  const name = $("#imp-sheet").value, ws = WB.Sheets[name];
+  try {
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+    const off = XLSX.utils.decode_range(ws["!ref"] || "A1");
+    const pad = rows.map(r => Array(off.s.c).fill(null).concat(r));
+    const full = Array.from({ length: off.s.r }, () => []).concat(pad);
+    PARSED = parseSheet(full, name);
+  } catch (e) { $("#imp-preview").hidden = true; return impErr(e.message); }
+  $("#imp-year").value = PARSED.year;
+  $("#imp-act").innerHTML = MONTHS.map((m, i) => `<option value="${i + 1}" ${i + 1 === PARSED.act ? "selected" : ""}>${m}</option>`).join("");
+  $("#imp-preview").hidden = false; $("#imp-go").disabled = false;
+  previewStats();
+}
+$("#imp-act").addEventListener("change", () => { PARSED.act = +$("#imp-act").value; previewStats(); });
+function previewStats() {
+  const p = PARSED, a = p.act, A = sum(p.items.map(r => sum(r.m.slice(0, a)))), P = sum(p.items.map(r => sum(r.m.slice(a))));
+  $("#imp-stats").innerHTML = [["Line items", p.items.length], ["GL accounts", Object.keys(p.gls).length], [`Actual ${rng(0, a - 1)}`, usd(A)], [a < 12 ? `Projected ${rng(a, 11)}` : "Projected", usd(P)]]
+    .map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v num">${v}</div></div>`).join("");
+  $("#imp-centers").innerHTML = `<thead><tr><th>Cost center</th><th>Actual</th><th>Projected</th><th>Full year</th><th>Budget</th></tr></thead><tbody>` +
+    p.centers.map((c, i) => { const it = p.items.filter(x => x.c === c.k), ca = sum(it.map(r => sum(r.m.slice(0, a)))), cp = sum(it.map(r => sum(r.m.slice(a))));
+      return `<tr><td>${esc(c.name)}</td><td class="num">${usd(ca)}</td><td class="num">${usd(cp)}</td><td class="num">${usd(ca + cp)}</td><td><input type="number" min="0" step="1000" id="imp-b${i}" data-i="${i}" value="${Math.round(c.budget || 0)}" aria-label="${esc(c.name)} budget"></td></tr>`; }).join("") + `</tbody>`;
+  $("#imp-centers").querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => { p.centers[+inp.dataset.i].budget = +inp.value || 0; }));
+  const prev = D && D.year === p.year ? sum(D.items.map(fy)) : null, now = sum(p.items.map(r => sum(r.m)));
+  $("#imp-cmp").innerHTML = prev != null ? `Currently published full-year forecast for ${esc(p.year)}: <b class="num">${usd(prev)}</b> → this import: <b class="num">${usd(now)}</b> (${now - prev >= 0 ? "+" : "−"}${usd(Math.abs(now - prev))})` : "";
+  const w = [];
+  if (!p.centers.some(c => c.budget)) w.push("No budget figures were found. Enter them above, or the budget comparisons will be hidden.");
+  p.warnings.filter(x => x.t === "total").forEach(x => w.push(`${x.n} (${x.g}): TOTAL cell shows ${usd(x.cached)} but months add to ${usd(x.s)}. The app uses the months.`));
+  p.recon.forEach(r => w.push(`${r.g} ${GLSafe(p, r.g)}, ${MONTHS[r.mo]}: line items differ from the GL total by ${usd(r.d)}.`));
+  $("#imp-warn").innerHTML = w.map(x => `<li>${esc(x)}</li>`).join(""); $("#imp-warn-wrap").hidden = !w.length;
+}
+const GLSafe = (p, g) => p.gls[g] ? `(${p.gls[g]})` : "";
+
+$("#imp-go").addEventListener("click", async () => {
+  const yr = $("#imp-year").value.trim();
+  if (!/^\d{4}$/.test(yr)) return impErr("Enter a four-digit year.");
+  const p = PARSED, btn = $("#imp-go");
+  const ds = { year: yr, sheet: p.sheet, fileName: FILE, act: p.act, centers: p.centers, gls: p.gls, items: p.items, launch: p.launch, recon: p.recon.filter(r => r.mo < p.act), warnings: p.warnings,
+    importedAt: new Date().toISOString(), importedBy: CURRENT_EMAIL, schema: 1 };
+  btn.disabled = true; btn.textContent = "Publishing…";
+  try { await B.publish(ds); } catch (e) { btn.disabled = false; btn.textContent = "Publish to dashboard"; return impErr(e.code === "permission-denied" ? "Your account isn't allowed to import. Ask an admin to add your email to the admins list." : "Publishing failed: " + e.message); }
+  dImp.close(); toast(`Published ${yr} data: ${p.items.length} line items`);
+  await loadYears(yr);
+});
+
+/* history */
+$("#b-history").addEventListener("click", async () => {
+  const t = $("#his-tbl"); t.innerHTML = `<tbody><tr><td>Loading…</td></tr></tbody>`; dHis.showModal();
+  try {
+    const hs = await B.history(D.year);
+    if (!hs.length) { t.innerHTML = `<tbody><tr><td class="empty">No imports recorded for ${esc(D.year)} yet.</td></tr></tbody>`; return; }
+    t.innerHTML = `<thead><tr><th>Imported</th><th>By</th><th>File / tab</th><th>Actuals thru</th><th>Full year</th>${ADMIN ? "<th></th>" : ""}</tr></thead><tbody>` +
+      hs.map((h, i) => `<tr><td>${esc(fmtDate(h.importedAt))}</td><td>${esc(h.importedBy || "–")}</td><td style="white-space:normal">${esc(h.fileName || "")} · ${esc(h.sheet)}</td><td>${MONTHS[h.act - 1]}</td><td class="num">${usd(sum(h.items.map(r => sum(r.m))))}</td>${ADMIN ? `<td>${i === 0 && !D.restoredAt ? '<span class="pill na">Current</span>' : `<button class="btn ghost" data-restore="${esc(h.id)}" type="button">Restore</button>`}</td>` : ""}</tr>`).join("") + `</tbody>`;
+    t.querySelectorAll("[data-restore]").forEach(b => b.addEventListener("click", async () => {
+      b.disabled = true; b.textContent = "Restoring…";
+      try { await B.restore(D.year, b.dataset.restore); dHis.close(); toast("Restored that import"); await loadYears(D.year); }
+      catch (e) { b.disabled = false; b.textContent = "Restore"; toast("Restore failed: " + e.message); }
+    }));
+  } catch (e) { t.innerHTML = `<tbody><tr><td class="empty">Couldn't load history: ${esc(e.message)}</td></tr></tbody>`; }
+});
+
+/* =====================================================================
+   4b. BUDGET PLANNER — editable next-year plan seeded from a dataset
+   plan = { year, baseYear, status, centers:[{k,name,base,target}], gls,
+            rows:[{id,c,g,n,m[12],base,note}], plus created/updated/submitted stamps }
+   ===================================================================== */
+let VIEW = "dash", PLAN = null, PL_RO = true, saveT = null, saving = false, pendingSave = false;
+const plst = { q: "", c: "all", closed: new Set() };
+const uid = () => Math.random().toString(36).slice(2, 10);
+const plFy = r => sum(r.m);
+const pnum = v => { const n = parseFloat(String(v).replace(/[$,\s]/g, "")); return isFinite(n) ? n : 0; };
+const fmt0 = v => Math.round(v).toLocaleString("en-US");
+const pct = (a, b) => b ? ((a - b) / Math.abs(b) * 100).toFixed(1) + "%" : "–";
+const plGlCenter = g => (PLAN.rows.find(r => r.g === g) || {}).c;
+const plCname = c => (PLAN.centers.find(x => x.k === c) || {}).name || c;
+
+function showView(v) {
+  VIEW = v;
+  document.querySelectorAll("#tabs button").forEach(b => b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  const dash = v === "dash";
+  $("#dash").hidden = !dash || !D; $("#nodata").hidden = !dash || !!D;
+  $("#planner").hidden = dash;
+  $("#year").hidden = !dash || $("#year").options.length < 2;
+  $("#b-history").hidden = !dash || !D;
+  $("#b-import").hidden = !dash || !ADMIN;
+  if (dash) { if (D) { if (ITEMS !== D.items) setData(D); else { setHeader(D); render(); } } } else openPlanner();
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showView(b.dataset.view); });
+
+async function openPlanner(pick) {
+  $("#h-title").textContent = "Budget Planner"; $("#h-sub").textContent = "Loading…"; $("#h-upd").textContent = "";
+  let plans = [], years = [];
+  try { [plans, years] = await Promise.all([B.listPlans(), B.listYears()]); } catch (e) { toast("Couldn't load plans: " + e.message); }
+  const want = pick || (D ? String(+D.year + 1) : null);
+  const y = plans.includes(want) ? want : plans[plans.length - 1];
+  if (y) { PLAN = await B.loadPlan(y); renderPlanner(); return; }
+  PLAN = null;
+  $("#pl-body").hidden = true; $("#pl-empty").hidden = false;
+  $("#h-sub").textContent = "Create a plan to start";
+  $("#plc-base").innerHTML = years.map(x => `<option ${D && x === D.year ? "selected" : ""}>${esc(x)}</option>`).join("");
+  const base = $("#plc-base").value;
+  $("#plc-year").value = base ? String(+base + 1) : "";
+  $("#plc-title").textContent = base ? `Plan the ${+base + 1} budget` : "Plan next year's budget";
+  $("#plc-go").disabled = !ADMIN || !years.length;
+  const err = $("#plc-err");
+  if (!years.length) { err.textContent = "Import a year's spend data first. The plan is built from it."; err.hidden = false; }
+  else if (!ADMIN) { err.textContent = "Only admins can create a budget plan."; err.hidden = false; }
+  else err.hidden = true;
+}
+$("#plc-base").addEventListener("change", e => { $("#plc-year").value = String(+e.target.value + 1); $("#plc-title").textContent = `Plan the ${+e.target.value + 1} budget`; });
+
+$("#pl-create").addEventListener("submit", async e => {
+  e.preventDefault();
+  const baseYear = $("#plc-base").value, year = $("#plc-year").value.trim(), mode = $("#plc-mode").value, spread = $("#plc-spread").value, p = pnum($("#plc-pct").value), f = 1 + p / 100;
+  const err = $("#plc-err");
+  if (!/^\d{4}$/.test(year)) { err.textContent = "Enter a four-digit plan year."; err.hidden = false; return; }
+  const tgtIn = pnum($("#plc-target").value);
+  const base = D && D.year === baseYear ? D : await B.load(baseYear);
+  if (!base) { err.textContent = "Couldn't load that year's data."; err.hidden = false; return; }
+  const rows = base.items.map(r => {
+    const fyb = sum(r.m); let m = Array(12).fill(0);
+    if (mode === "forecast" && Math.abs(fyb) >= 0.5) {
+      if (spread === "even") { const each = Math.round(fyb * f / 12); m = Array(12).fill(each); m[11] = Math.round(fyb * f) - each * 11; }
+      else if (r.m.some(v => v < 0) && fyb > 0) { const each = Math.round(fyb * f / 12); m = Array(12).fill(each); m[11] = Math.round(fyb * f) - each * 11; } // credits/reversals don't repeat
+      else { m = r.m.map(v => Math.round(v * f)); }
+    }
+    return { id: uid(), c: r.c, g: r.g, n: r.n, m, base: Math.round(fyb), note: "" };
+  });
+  PLAN = { year, baseYear, status: "draft", basis: mode, pct: p, spread,
+    centers: base.centers.map(c => ({ k: c.k, name: c.name, base: c.budget || 0, baseFc: Math.round(sum(base.items.filter(x => x.c === c.k).map(x => sum(x.m)))), target: Math.round((c.budget || 0) * f) })),
+    gls: { ...base.gls }, rows, createdAt: new Date().toISOString(), createdBy: CURRENT_EMAIL, updatedAt: new Date().toISOString(), updatedBy: CURRENT_EMAIL };
+  if (tgtIn > 0) scaleTargets(PLAN.centers, tgtIn);
+  $("#plc-go").disabled = true;
+  try { await B.savePlan(PLAN); } catch (ex) { $("#plc-go").disabled = false; err.textContent = ex.code === "permission-denied" ? "Your account isn't allowed to create plans." : "Couldn't save the plan: " + ex.message; err.hidden = false; return; }
+  $("#plc-go").disabled = false;
+  plst.closed = new Set(); toast(`Created the ${year} plan from ${baseYear}`);
+  renderPlanner();
+});
+
+/* spread a total target across cost centers, keeping their current proportions */
+function scaleTargets(cs, total) {
+  total = Math.round(total); if (!cs.length) return;
+  const cur = sum(cs.map(c => c.target || 0)); let given = 0;
+  cs.forEach((c, i) => { const v = i === cs.length - 1 ? total - given : Math.round(cur > 0 ? (c.target || 0) * total / cur : total / cs.length); c.target = v; given += v; });
+}
+
+/* save */
+function setSave(t, err) { const el = $("#pl-save"); el.textContent = t; el.classList.toggle("err", !!err); }
+function scheduleSave() {
+  if (PL_RO) return;
+  setSave("Unsaved changes…"); clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; doSave(); }, 700);
+}
+async function doSave() {
+  if (saving) { pendingSave = true; return; }
+  saving = true; setSave("Saving…");
+  PLAN.updatedAt = new Date().toISOString(); PLAN.updatedBy = CURRENT_EMAIL;
+  try { await B.savePlan(PLAN); setSave("All changes saved " + new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })); }
+  catch (e) { setSave("Couldn't save. Retrying…", true); setTimeout(doSave, 4000); }
+  saving = false;
+  if (pendingSave) { pendingSave = false; doSave(); }
+}
+const flushSave = () => { if (saveT) { clearTimeout(saveT); saveT = null; doSave(); } };
+window.addEventListener("pagehide", flushSave);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushSave(); });
+window.addEventListener("beforeunload", e => { if (saveT && $("#pl-save").textContent.startsWith("Unsaved") || saving) { e.preventDefault(); e.returnValue = ""; } });
+
+/* render */
+function plRows() {
+  const q = plst.q.trim().toLowerCase();
+  return PLAN.rows.filter(r => (plst.c === "all" || r.c === plst.c) && (!q || r.n.toLowerCase().includes(q) || r.g.includes(q)));
+}
+function renderPlanner() {
+  $("#pl-empty").hidden = true; $("#pl-body").hidden = false;
+  PL_RO = !ADMIN || PLAN.status === "submitted";
+  $("#h-title").textContent = `Budget Plan ${PLAN.year}`;
+  $("#h-sub").textContent = `Built from ${PLAN.baseYear} ${PLAN.basis === "blank" ? "line items" : "full-year forecast"}${PLAN.pct ? ` ${PLAN.pct > 0 ? "+" : ""}${PLAN.pct}%` : ""}`;
+  $("#h-upd").textContent = `Last edited ${fmtDate(PLAN.updatedAt)}${PLAN.updatedBy ? " by " + PLAN.updatedBy : ""}`;
+  $("#pl-c").innerHTML = `<option value="all">All cost centers</option>` + PLAN.centers.map(c => `<option value="${c.k}">${esc(c.name)}</option>`).join("");
+  $("#pl-c").value = plst.c;
+  $("#pl-adj").hidden = PL_RO;
+  $("#pl-submit").textContent = PLAN.status === "submitted" ? "Reopen for edits" : "Mark as submitted";
+  $("#pl-submit").hidden = !ADMIN; $("#pl-delete").hidden = !ADMIN;
+  setSave(PL_RO ? (PLAN.status === "submitted" ? "Submitted · read-only" : "Read-only") : "All changes saved");
+  renderCenters(); renderGrid(); refreshTotals(); renderLabControls();
+}
+function renderCenters() {
+  const by = PLAN.baseYear, y = PLAN.year;
+  $("#pl-centers").innerHTML = `<thead><tr><th>Cost center</th><th>${by} budget</th><th>${by} forecast</th><th>${y} target</th><th>${y} plan</th><th>Plan vs target</th><th>vs ${by} forecast</th></tr></thead><tbody>` +
+    PLAN.centers.map((c, i) => `<tr><td><span class="sw" style="background:var(--s${i % 4 + 1})"></span> ${esc(c.name)}</td><td class="num">${usd(c.base)}</td><td class="num">${usd(c.baseFc)}</td>
+      <td><input class="tgt num" type="text" inputmode="decimal" data-t="${i}" value="${fmt0(c.target)}" ${PL_RO ? "disabled" : ""} aria-label="${esc(c.name)} target"></td>
+      <td class="num" id="pc-plan-${i}"></td><td id="pc-var-${i}"></td><td class="num" id="pc-chg-${i}"></td></tr>`).join("") +
+    `<tr class="grand"><td><b>Total</b></td><td class="num"><b>${usd(sum(PLAN.centers.map(c => c.base)))}</b></td><td class="num"><b>${usd(sum(PLAN.centers.map(c => c.baseFc)))}</b></td><td><input class="tgt num" id="pc-tt-in" type="text" inputmode="decimal" ${PL_RO ? "disabled" : ""} aria-label="Total ${y} target" title="Type a total and it is spread across the cost centers in proportion"></td><td class="num" id="pc-tp"></td><td id="pc-tv"></td><td class="num" id="pc-tc"></td></tr></tbody>`;
+  const ti = $("#pc-tt-in");
+  ti.addEventListener("change", () => {
+    scaleTargets(PLAN.centers, pnum(ti.value));
+    PLAN.centers.forEach((c, i) => { const el = $(`#pl-centers input[data-t="${i}"]`); if (el) el.value = fmt0(c.target); });
+    refreshTotals(); scheduleSave(); toast("Total target set. Cost-center targets were scaled to match.");
+  });
+  $("#pl-centers").querySelectorAll("input[data-t]").forEach(inp => {
+    inp.addEventListener("input", () => { PLAN.centers[+inp.dataset.t].target = pnum(inp.value); refreshTotals(); scheduleSave(); });
+    inp.addEventListener("blur", () => inp.value = fmt0(PLAN.centers[+inp.dataset.t].target));
+  });
+}
+const varPill = (p, t) => !t ? `<span class="pill na">No target</span>` : p > t ? `<span class="pill over">▲ ${usd(p - t)} over</span>` : `<span class="pill under">▼ ${usd(t - p)} under</span>`;
+
+function renderGrid() {
+  const rs = plRows(), dis = PL_RO ? "disabled" : "", by = PLAN.baseYear;
+  if (!rs.length) { $("#pl-grid").innerHTML = `<tbody><tr><td class="empty">No line items match.</td></tr></tbody>`; return; }
+  let h = `<thead><tr><th>Line item</th>${MONTHS.map(m => `<th>${m}</th>`).join("")}<th class="tot">${PLAN.year} total</th><th>${by} fcst</th><th>Change</th><th style="text-align:left">Notes</th><th></th></tr></thead><tbody>`;
+  const gs = [...new Set(rs.map(r => r.g))];
+  gs.forEach(g => {
+    const closed = plst.closed.has(g);
+    h += `<tr class="gl ${closed ? "closed" : ""}" data-g="${esc(g)}"><td><span class="chev">▾</span><span class="code">${esc(g)}</span>${esc(PLAN.gls[g] || "")}<span class="ctag">${esc(plCname(plGlCenter(g)))}</span></td>${MONTHS.map((_, i) => `<td class="num" data-gm="${esc(g)}|${i}"></td>`).join("")}<td class="num tot" data-gm="${esc(g)}|fy"></td><td class="num base" data-gm="${esc(g)}|base"></td><td class="num" data-gm="${esc(g)}|d"></td><td colspan="2">${PL_RO ? "" : `<button class="addline" type="button" data-add="${esc(g)}">+ Add line</button>`}</td></tr>`;
+    if (closed) return;
+    rs.filter(r => r.g === g).forEach(r => {
+      h += `<tr data-row="${r.id}" class="${r.base === 0 && r.isNew ? "new" : ""}"><td><input class="nm" data-r="${r.id}" data-f="n" value="${esc(r.n)}" ${dis} aria-label="Line item name"></td>` +
+        r.m.map((v, i) => `<td><input data-r="${r.id}" data-i="${i}" inputmode="decimal" value="${v ? fmt0(v) : ""}" placeholder="–" ${dis} aria-label="${esc(r.n)} ${MONTHS[i]}"></td>`).join("") +
+        `<td class="tot"><input class="fy" data-r="${r.id}" data-f="fy" inputmode="decimal" value="${fmt0(plFy(r))}" ${dis} aria-label="${esc(r.n)} full year"></td><td class="num base">${r.base ? usd(r.base) : "–"}</td><td class="num" data-d="${r.id}"></td>` +
+        `<td><input class="note" data-r="${r.id}" data-f="note" value="${esc(r.note || "")}" placeholder="${PL_RO ? "" : "Add note"}" ${dis} aria-label="Note"></td><td>${PL_RO ? "" : `<button class="del" type="button" data-del="${r.id}" aria-label="Delete ${esc(r.n)}">×</button>`}</td></tr>`;
+    });
+  });
+  h += `<tr class="grand"><td>Total (${rs.length} line items)</td>${MONTHS.map((_, i) => `<td class="num" data-tm="${i}"></td>`).join("")}<td class="num tot" data-tm="fy"></td><td class="num base" data-tm="base"></td><td class="num" data-tm="d"></td><td colspan="2"></td></tr></tbody>`;
+  $("#pl-grid").innerHTML = h;
+  $("#pl-expand").textContent = gs.every(g => !plst.closed.has(g)) ? "Collapse all" : "Expand all";
+}
+function chgCell(el, a, b) { if (!el) return; const d = a - b; el.textContent = Math.abs(d) < 0.5 ? "–" : (d > 0 ? "+" : "−") + "$" + fmt0(Math.abs(d)) + (b ? ` (${pct(a, b)})` : ""); el.className = "num " + (d > 0.5 ? "up" : d < -0.5 ? "down" : "base"); }
+function refreshTotals() {
+  const grid = $("#pl-grid"), rs = plRows();
+  rs.forEach(r => {
+    const fyIn = grid.querySelector(`input[data-f="fy"][data-r="${r.id}"]`);
+    if (fyIn && document.activeElement !== fyIn) fyIn.value = fmt0(plFy(r));
+    chgCell(grid.querySelector(`[data-d="${r.id}"]`), plFy(r), r.base);
+  });
+  [...new Set(rs.map(r => r.g))].forEach(g => {
+    const its = rs.filter(r => r.g === g), m = MONTHS.map((_, i) => sum(its.map(r => r.m[i])));
+    m.forEach((v, i) => { const el = grid.querySelector(`[data-gm="${CSS.escape(g)}|${i}"]`); if (el) el.textContent = Math.abs(v) < 0.5 ? "–" : usd(v); });
+    const f = sum(m), b = sum(its.map(r => r.base));
+    const set = (k2, t) => { const el = grid.querySelector(`[data-gm="${CSS.escape(g)}|${k2}"]`); if (el) el.textContent = t; };
+    set("fy", usd(f)); set("base", usd(b)); chgCell(grid.querySelector(`[data-gm="${CSS.escape(g)}|d"]`), f, b);
+  });
+  const tm = MONTHS.map((_, i) => sum(rs.map(r => r.m[i])));
+  tm.forEach((v, i) => { const el = grid.querySelector(`[data-tm="${i}"]`); if (el) el.textContent = usd(v); });
+  const tf = sum(tm), tb = sum(rs.map(r => r.base));
+  const q = s => grid.querySelector(`[data-tm="${s}"]`);
+  if (q("fy")) { q("fy").textContent = usd(tf); q("base").textContent = usd(tb); chgCell(q("d"), tf, tb); }
+  // centers + KPIs (whole plan, not just filtered rows)
+  let TP = 0, TT = 0, TB = 0;
+  PLAN.centers.forEach((c, i) => {
+    const p = sum(PLAN.rows.filter(r => r.c === c.k).map(plFy)); TP += p; TT += c.target || 0; TB += c.baseFc || 0;
+    $("#pc-plan-" + i).textContent = usd(p); $("#pc-var-" + i).innerHTML = varPill(p, c.target); chgCell($("#pc-chg-" + i), p, c.baseFc);
+  });
+  { const ti = $("#pc-tt-in"); if (ti && document.activeElement !== ti) ti.value = fmt0(TT); }
+   $("#pc-tp").innerHTML = `<b>${usd(TP)}</b>`; $("#pc-tv").innerHTML = varPill(TP, TT); chgCell($("#pc-tc"), TP, TB);
+  const sub = PLAN.status === "submitted";
+  $("#pl-kpis").innerHTML = `
+    <div class="panel kpi"><span class="k">${PLAN.year} plan total</span><span class="v num">${usd(TP)}</span><span class="s">${PLAN.rows.length} line items</span></div>
+    <div class="panel kpi"><span class="k">Against ${PLAN.year} target</span><span class="v num">${TT ? (TP - TT >= 0 ? "+" : "−") + usd(Math.abs(TP - TT)) : "–"}</span>${varPill(TP, TT)}</div>
+    <div class="panel kpi"><span class="k">Against ${PLAN.baseYear} forecast</span><span class="v num">${(TP - TB >= 0 ? "+" : "−") + usd(Math.abs(TP - TB))}</span><span class="s">${pct(TP, TB)} vs ${usd(TB)}</span></div>
+    <div class="panel kpi"><span class="k">Status</span><span class="pill ${sub ? "sub" : "draft"}">${sub ? "✓ Submitted" : "● Draft"}</span><span class="s">${sub ? "Submitted " + fmtDate(PLAN.submittedAt) + (PLAN.submittedBy ? " by " + PLAN.submittedBy : "") : "Created " + fmtDate(PLAN.createdAt)}</span></div>`;
+
+  clearTimeout(refreshTotals.t); refreshTotals.t = setTimeout(renderInsights, 250);
+}
+
+
+/* grid interactions */
+const plGrid = $("#pl-grid");
+plGrid.addEventListener("input", e => {
+  const t = e.target, r = PLAN.rows.find(x => x.id === t.dataset.r); if (!r) return;
+  if (t.dataset.i != null) { r.m[+t.dataset.i] = pnum(t.value); refreshTotals(); }
+  else if (t.dataset.f === "n") r.n = t.value;
+  else if (t.dataset.f === "note") r.note = t.value;
+  else if (t.dataset.f === "fy") return; // applied on change
+  scheduleSave();
+});
+plGrid.addEventListener("change", e => {
+  const t = e.target, r = PLAN.rows.find(x => x.id === t.dataset.r); if (!r) return;
+  if (t.dataset.f === "fy") {
+    const want = Math.round(pnum(t.value)), cur = plFy(r);
+    if (Math.abs(cur) >= 0.5 && r.m.every(v => v >= 0)) { const f = want / cur; r.m = r.m.map(v => Math.round(v * f)); }
+    else { const each = Math.round(want / 12); r.m = Array(12).fill(each); }
+    r.m[11] += want - sum(r.m); // land exactly on the typed total
+    const tr = t.closest("tr"); r.m.forEach((v, i) => { const el = tr.querySelector(`input[data-i="${i}"]`); el.value = v ? fmt0(v) : ""; });
+    refreshTotals(); scheduleSave();
+  }
+});
+plGrid.addEventListener("focusout", e => { const t = e.target; if (t.dataset && t.dataset.i != null) { const r = PLAN.rows.find(x => x.id === t.dataset.r); const v = r.m[+t.dataset.i]; t.value = v ? fmt0(v) : ""; } });
+plGrid.addEventListener("click", e => {
+  const add = e.target.closest("[data-add]"), del = e.target.closest("[data-del]"), gl = e.target.closest("tr.gl");
+  if (add) {
+    const g = add.dataset.add, last = PLAN.rows.map(r => r.g).lastIndexOf(g), id = uid();
+    PLAN.rows.splice(last + 1, 0, { id, c: plGlCenter(g), g, n: "New line item", m: Array(12).fill(0), base: 0, note: "", isNew: true });
+    plst.closed.delete(g); renderGrid(); refreshTotals(); scheduleSave();
+    const inp = plGrid.querySelector(`input[data-f="n"][data-r="${id}"]`); if (inp) { inp.focus(); inp.select(); }
+    return;
+  }
+  if (del) {
+    const i = PLAN.rows.findIndex(r => r.id === del.dataset.del), r = PLAN.rows[i];
+    const lastInGl = PLAN.rows.filter(x => x.g === r.g).length === 1;
+    takeSnapshot(`Before: Remove ${r.n}`, true, true);
+    logChange("Removed line", -plFy(r), [`${r.n} (${usd(plFy(r))}, ${r.g})`]);
+    PLAN.rows.splice(i, 1); renderGrid(); refreshTotals(); renderLabControls(); scheduleSave();
+    toast(`Removed "${r.n}"${lastInGl ? ` (the last line in ${r.g}, so that account is gone too)` : ""}. Use Undo last scenario to bring it back.`); return;
+  }
+  if (gl && !e.target.closest("button")) { const g = gl.dataset.g; plst.closed.has(g) ? plst.closed.delete(g) : plst.closed.add(g); renderGrid(); refreshTotals(); }
+});
+plGrid.addEventListener("keydown", e => {
+  const t = e.target; if (t.tagName !== "INPUT" || t.dataset.i == null) return;
+  if (e.key === "Enter" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const ins = [...plGrid.querySelectorAll(`input[data-i="${t.dataset.i}"]`)], j = ins.indexOf(t) + (e.key === "ArrowUp" ? -1 : 1);
+    if (ins[j]) { ins[j].focus(); ins[j].select(); }
+  }
+});
+$("#pl-q").addEventListener("input", e => { plst.q = e.target.value; renderGrid(); refreshTotals(); });
+$("#pl-c").addEventListener("change", e => { plst.c = e.target.value; renderGrid(); refreshTotals(); });
+$("#pl-expand").addEventListener("click", () => {
+  const gs = [...new Set(plRows().map(r => r.g))];
+  if (gs.every(g => !plst.closed.has(g))) gs.forEach(g => plst.closed.add(g)); else gs.forEach(g => plst.closed.delete(g));
+  renderGrid(); refreshTotals();
+});
+$("#pl-apply").addEventListener("click", () => {
+  const p = pnum($("#pl-pct").value); if (!p) { toast("Enter a percent first, for example 5 or -10."); return; }
+  const rs = plRows(); rs.forEach(r => r.m = r.m.map(v => Math.round(v * (1 + p / 100))));
+  $("#pl-pct").value = ""; renderGrid(); refreshTotals(); scheduleSave();
+  toast(`Applied ${p > 0 ? "+" : ""}${p}% to ${rs.length} line items`);
+});
+$("#pl-submit").addEventListener("click", async () => {
+  if (PLAN.status === "submitted") { PLAN.status = "draft"; delete PLAN.submittedAt; delete PLAN.submittedBy; }
+  else { PLAN.status = "submitted"; PLAN.submittedAt = new Date().toISOString(); PLAN.submittedBy = CURRENT_EMAIL; }
+  clearTimeout(saveT); PL_RO = false; await doSave(); renderPlanner();
+  toast(PLAN.status === "submitted" ? "Marked as submitted. Editing is locked until you reopen it." : "Reopened for edits");
+});
+let delArm = null;
+$("#pl-delete").addEventListener("click", async () => {
+  const b = $("#pl-delete");
+  if (!delArm) { b.textContent = `Click again to delete the ${PLAN.year} plan`; b.style.color = "var(--bad)"; delArm = setTimeout(() => { delArm = null; b.textContent = "Delete plan"; b.style.color = ""; }, 4000); return; }
+  clearTimeout(delArm); delArm = null; b.textContent = "Delete plan"; b.style.color = "";
+  try { await B.deletePlan(PLAN.year); toast(`Deleted the ${PLAN.year} plan`); PLAN = null; openPlanner(); } catch (e) { toast("Delete failed: " + e.message); }
+});
+
+/* ---------- Scenario lab: shift budget, hit target, snapshots, insights ---------- */
+const FLEX = {
+  te:        { f: .9,  label: "Travel & entertainment" },
+  misc:      { f: .85, label: "Misc / ad hoc" },
+  onetime:   { f: .7,  label: "One-time last year" },
+  event:     { f: .5,  label: "Annual show / event" },
+  general:   { f: .5,  label: "Variable spend" },
+  sub:       { f: .3,  label: "Subscription / tool" },
+  recurring: { f: .15, label: "Recurring commitment" },
+};
+const TE_RX = /travel|meals|taxi|tolls|mileage|lodging|entertainment|auto rental/i;
+function classify(r) {
+  const n = r.n.toLowerCase(), gn = PLAN.gls[r.g] || "";
+  const nz = r.m.filter(v => Math.abs(v) >= 1);
+  if (TE_RX.test(gn)) return "te";
+  if (/misc|over accrual|sales rep/.test(n)) return "misc";
+  if (/subscription|notion|canva|vimeo|jotform|google cloud|qr code/.test(n)) return "sub";
+  if (nz.length >= 6) { const mx = Math.max(...nz), mn = Math.min(...nz); if (mn > 0 && (mx - mn) / mx < 0.1) return "recurring"; }
+  if (/jan-dec|fy2\d|retainer|catalog/.test(n)) return "recurring";
+  if (nz.length > 0 && nz.length <= 2) return /^6233/.test(r.g) || /nsm|meeting|forum|congress|convention|symposium|summit|conference/i.test(n) ? "event" : "onetime";
+  return "general";
+}
+const PRESETS = [
+  { k: "p:shows", name: "Trade shows & booths", test: g => /^6233/.test(g) },
+  { k: "p:adv", name: "Advertising & collateral", test: g => /^6231/.test(g) },
+  { k: "p:kol", name: "KOLs, lectures & conferences", test: g => /lecture|kol|honorar/i.test(PLAN.gls[g] || "") },
+  { k: "p:te", name: "Travel & entertainment", test: g => TE_RX.test(PLAN.gls[g] || "") },
+];
+const allGls = () => [...new Set(PLAN.rows.map(r => r.g))];
+function groupGls(key) {
+  if (!key) return [];
+  if (key.startsWith("p:")) { const p = PRESETS.find(x => x.k === key); return allGls().filter(p.test); }
+  return [key.slice(2)];
+}
+function groupName(key) { return key.startsWith("p:") ? PRESETS.find(x => x.k === key).name : `${key.slice(2)} ${PLAN.gls[key.slice(2)] || ""}`; }
+const planTotal = () => sum(PLAN.rows.map(plFy));
+const planTarget = c => c ? (PLAN.centers.find(x => x.k === c) || {}).target || 0 : sum(PLAN.centers.map(x => x.target || 0));
+const planTotalC = c => sum(PLAN.rows.filter(r => !c || r.c === c).map(plFy));
+
+/* set a row to a new full-year total, keeping its monthly shape */
+function setRowFy(r, want) {
+  want = Math.round(want); const cur = plFy(r);
+  if (Math.abs(cur) >= 0.5 && r.m.every(v => v >= 0)) r.m = r.m.map(v => Math.round(v * want / cur));
+  else { const e = Math.round(want / 12); r.m = Array(12).fill(e); }
+  const diff = want - sum(r.m); if (diff) { let i = r.m.reduce((bi, v, j, a) => Math.abs(v) > Math.abs(a[bi]) ? j : bi, 0); r.m[i] += diff; }
+}
+
+/* spread `amount` of cuts across eligible lines, weighted by size x flexibility, capped per line */
+function proposeCuts({ amount, excludeGls = new Set(), center = null, cap = .25, protect = true, skip = new Set() }) {
+  const cand = PLAN.rows.filter(r => !excludeGls.has(r.g) && (!center || r.c === center) && plFy(r) > 0)
+    .map(r => { const k = classify(r); return { r, k, fy: plFy(r), f: protect && k === "recurring" ? 0 : FLEX[k].f, max: Math.floor(plFy(r) * cap), cut: 0, off: skip.has(r.id) }; })
+    .filter(c => c.f > 0 && c.max > 0);
+  const live = cand.filter(c => !c.off);
+  let left = Math.max(0, amount);
+  for (let it = 0; it < 30 && left > 0.5; it++) {
+    const open = live.filter(c => c.cut < c.max - 0.01); if (!open.length) break;
+    const W = sum(open.map(c => c.fy * c.f)); let used = 0;
+    open.forEach(c => { const add = Math.min(c.max - c.cut, left * c.fy * c.f / W); c.cut += add; used += add; });
+    left -= used;
+  }
+  live.forEach(c => c.cut = Math.floor(c.cut));
+  let short = Math.round(amount - sum(live.map(c => c.cut)));
+  for (const c of [...live].sort((a, b) => b.fy - a.fy)) { if (short <= 0) break; const room = c.max - c.cut; const add = Math.min(room, short); c.cut += add; short -= add; }
+  return { cuts: cand.filter(c => c.cut > 0 || c.off).sort((a, b) => b.cut - a.cut || b.fy - a.fy), shortfall: Math.max(0, short) };
+}
+
+let SCN = null; // current preview
+function scnSetTab(t) {
+  document.querySelectorAll("#sc-tabs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === t));
+  ["shift", "target", "remove", "log", "snap"].forEach(x => $("#sc-" + x).hidden = x !== t); if (t === "log") renderLog();
+  closePreview(); if (t === "snap") renderSnaps(); if (t === "target") renderGap(); if (t === "remove") renderRemoveList();
+}
+$("#sc-tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) scnSetTab(b.dataset.t); });
+
+function renderLabControls() {
+  const gls = allGls();
+  const pre = PRESETS.filter(p => gls.some(p.test));
+  const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  const keepSel = $("#sc-grp").value;
+  GRP_OPTS = `<optgroup label="Groups">${pre.map(p => opt(p.k, p.name)).join("")}</optgroup><optgroup label="GL accounts">${gls.map(g => opt("g:" + g, `${g} · ${PLAN.gls[g] || ""}`)).join("")}</optgroup>`;
+  const extra = [...document.querySelectorAll("#sc-more .inc-grp")].map(el => el.value);
+  $("#sc-grp").innerHTML = GRP_OPTS;
+  $("#sc-grp").value = keepSel && [...$("#sc-grp").options].some(o => o.value === keepSel) ? keepSel : (pre[0] ? pre[0].k : "g:" + gls[0]);
+  document.querySelectorAll("#sc-more .inc-grp").forEach((el, i) => { el.innerHTML = GRP_OPTS; if (extra[i] && [...el.options].some(o => o.value === extra[i])) el.value = extra[i]; });
+  $("#sc-scope").innerHTML = opt("", "All cost centers") + PLAN.centers.map(c => opt(c.k, c.name)).join("");
+  $("#sc-keep").innerHTML = opt("", "Nothing extra") + pre.map(p => opt(p.k, p.name)).join("") + gls.map(g => opt("g:" + g, `${g} · ${PLAN.gls[g] || ""}`)).join("");
+  $("#sc-quick").innerHTML = `Try: ` + [["p:shows", 10], ["p:shows", 20], ["p:kol", 15], ["p:adv", -10]].filter(([k]) => pre.some(p => p.k === k))
+    .map(([k, v]) => `<button class="chip" type="button" data-qk="${k}" data-qv="${v}">${esc(PRESETS.find(p => p.k === k).name)} ${v > 0 ? "+" : ""}${v}%</button>`).join("");
+  $("#pl-tools").querySelectorAll("button,select,input").forEach(el => { if (!["sc-tabs"].includes(el.parentElement.id) && !el.closest("#sc-snap") && el.id !== "sc-undo") el.disabled = PL_RO; });
+  $("#sc-snapsave").disabled = PL_RO;
+  const last = (PLAN.snapshots || [])[0];
+  $("#sc-undo").hidden = PL_RO || !(last && last.auto && last.undoable);
+  if (!$("#sc-snap").hidden) renderSnaps();
+  if (!$("#sc-target").hidden) renderGap();
+  if (!$("#sc-remove").hidden) renderRemoveList();
+  if (!$("#sc-log").hidden) renderLog();
+}
+$("#sc-quick").addEventListener("click", e => {
+  const b = e.target.closest("[data-qk]"); if (!b) return;
+  resetIncs(); $("#sc-grp").value = b.dataset.qk; $("#sc-amt").value = b.dataset.qv; $("#sc-unit").value = "pct"; runShift();
+});
+
+/* ---- Shift budget ---- */
+let GRP_OPTS = "";
+function incRowHtml() {
+  return `<div class="inc"><label><span class="flabel">Also increase</span><select class="inc-grp" aria-label="Area">${GRP_OPTS}</select></label>
+    <label><span class="flabel">By</span><span class="inl"><input class="inc-amt" type="number" step="1" value="10" aria-label="Amount"><select class="inc-unit" aria-label="Unit"><option value="pct">%</option><option value="usd">$</option><option value="ea">$ each × qty</option></select><input class="inc-qty" type="number" min="1" step="1" value="1" aria-label="Quantity" hidden></span></label>
+    <label><span class="flabel">Add as a new line (optional)</span><input class="inc-new" type="text" placeholder="e.g. 4 new KOLs" aria-label="New line name"></label>
+    <div><button class="btn ghost inc-rm" type="button">Remove</button></div></div>`;
+}
+function resetIncs() {
+  $("#sc-more").innerHTML = ""; $("#sc-new").value = ""; $("#sc-qty").value = 1; $("#sc-qty").hidden = $("#sc-unit").value !== "ea";
+}
+$("#sc-addinc").addEventListener("click", () => {
+  const d = document.createElement("div"); d.innerHTML = incRowHtml(); const row = d.firstElementChild;
+  const used = new Set([...document.querySelectorAll("#sc-incs .inc-grp")].map(el => el.value));
+  $("#sc-more").appendChild(row);
+  const sel = row.querySelector(".inc-grp"), nx = [...sel.options].find(o => !used.has(o.value)); if (nx) sel.value = nx.value;
+  row.querySelector(".inc-amt").focus();
+});
+$("#sc-incs").addEventListener("change", e => {
+  if (!e.target.classList.contains("inc-unit")) return;
+  e.target.parentElement.querySelector(".inc-qty").hidden = e.target.value !== "ea";
+});
+$("#sc-incs").addEventListener("click", e => { const b = e.target.closest(".inc-rm"); if (b) b.closest(".inc").remove(); });
+
+function runShift(skip = new Set()) {
+  const fund = $("#sc-fund").value, cap = +$("#sc-cap").value / 100, protect = $("#sc-protect").checked;
+  const incs = []; let noRows = false, zeroPct = false;
+  document.querySelectorAll("#sc-incs .inc").forEach(row => {
+    const key = row.querySelector(".inc-grp").value, unit = row.querySelector(".inc-unit").value, amt = pnum(row.querySelector(".inc-amt").value);
+    const qty = Math.max(1, Math.round(pnum(row.querySelector(".inc-qty").value) || 1)), nm = row.querySelector(".inc-new").value.trim();
+    const gls = new Set(groupGls(key)), grpRows = PLAN.rows.filter(r => gls.has(r.g)), grpNow = sum(grpRows.map(plFy));
+    if (!grpRows.length) { noRows = true; return; }
+    const delta = Math.round(unit === "pct" ? grpNow * amt / 100 : unit === "ea" ? amt * qty : amt);
+    if (!delta) { if (unit === "pct" && !grpNow && amt) zeroPct = true; return; }
+    const nice = unit === "pct" ? Math.abs(amt) + "%" : unit === "ea" ? `${qty} × ${usd(Math.abs(amt))}` : usd(Math.abs(delta));
+    incs.push({ key, gls, delta, grpNow, nm: delta > 0 ? nm : "", label: `${nm && delta > 0 ? nm + " in " : ""}${groupName(key).trim()} ${delta > 0 ? "+" : "−"}${nice}` });
+  });
+  if (!incs.length) return toast(noRows ? "That group has no line items in the plan." : zeroPct ? "That group is at $0, so a % change does nothing. Use $ instead." : "Enter an amount to change.");
+  const delta = sum(incs.map(i => i.delta)), allGlSet = new Set(incs.flatMap(i => [...i.gls]));
+  const centers = new Set(PLAN.rows.filter(r => allGlSet.has(r.g)).map(r => r.c));
+  const center = $("#sc-from").value === "same" && centers.size === 1 ? [...centers][0] : null;
+  let need = 0;
+  if (delta > 0 && fund === "flat") need = delta;
+  if (delta > 0 && fund === "target") { const tgt = planTarget(null); need = tgt ? Math.max(0, planTotal() + delta - tgt) : delta; }
+  const res = need > 0 ? proposeCuts({ amount: need, excludeGls: allGlSet, center, cap, protect, skip }) : { cuts: [], shortfall: 0 };
+  SCN = { kind: "shift", incs, delta, need, fund, res, skip, label: incs.length <= 2 ? incs.map(i => i.label).join(" and ") : `${incs.length} increases (${delta > 0 ? "+" : "−"}${usd(Math.abs(delta))})` };
+  renderPreview();
+}
+$("#sc-run").addEventListener("click", () => runShift());
+
+/* ---- Hit target ---- */
+function renderGap() {
+  const c = $("#sc-scope").value || null, tot = planTotalC(c), tgt = planTarget(c), who = c ? plCname(c) : "The plan";
+  $("#sc-gap").innerHTML = !tgt ? `${esc(who)} has no target set. Enter one in the targets table above.` :
+    tot > tgt ? `${esc(who)} is <b>${usd(tot - tgt)} over</b> its ${usd(tgt)} target. The planner can suggest cuts that close the gap, starting with the most flexible spend.` :
+    `${esc(who)} is <b>${usd(tgt - tot)} under</b> its target. Use Shift budget to put that headroom to work.`;
+  $("#sc-run2").disabled = PL_RO || !tgt || tot <= tgt;
+}
+$("#sc-scope").addEventListener("change", renderGap);
+function runTarget(skip = new Set()) {
+  const c = $("#sc-scope").value || null, gap = planTotalC(c) - planTarget(c);
+  if (gap <= 0) return renderGap();
+  const keep = $("#sc-keep").value, ex = new Set(keep ? groupGls(keep) : []);
+  const res = proposeCuts({ amount: gap, excludeGls: ex, center: c, cap: +$("#sc-cap2").value / 100, protect: $("#sc-protect2").checked, skip });
+  SCN = { kind: "target", center: c, need: gap, delta: 0, res, skip, label: `Hit ${c ? plCname(c) : "total"} target` };
+  renderPreview();
+}
+$("#sc-run2").addEventListener("click", () => runTarget());
+
+/* ---- Preview + apply ---- */
+function closePreview() { SCN = null; $("#sc-preview").hidden = true; $("#sc-preview").innerHTML = ""; }
+function renderPreview() {
+  if (SCN.kind === "remove") return renderRemovePreview();
+  const S = SCN, cuts = S.res.cuts.filter(c => !c.off), cutTot = sum(cuts.map(c => c.cut));
+  const before = planTotal(), after = before + S.delta - cutTot, tgt = planTarget(S.kind === "target" ? S.center : null);
+  const cls = v => v > 0.5 ? "up" : v < -0.5 ? "down" : "";
+  const stat = (k, v, c = "") => `<div class="stat"><div class="k">${k}</div><div class="v num ${c}">${v}</div></div>`;
+  let h = `<div class="ph" style="margin:0"><h2>Preview: ${esc(S.label)}</h2><span class="sub">Uncheck any line to protect it; the cut moves to other lines.</span></div><div class="sc-sum">`;
+  if (S.kind === "shift") S.incs.forEach(i => { h += stat(esc(groupName(i.key).trim()) + (i.nm ? ` · ${esc(i.nm)}` : ""), `${usd(i.grpNow)} → ${usd(i.grpNow + i.delta)}`); });
+  h += stat("Cuts suggested", usd(cutTot), cutTot ? "down" : "") + stat("Plan total", `${usd(before)} → ${usd(after)}`, cls(after - before));
+  if (tgt) h += stat("Against target", Math.abs(after - tgt) < 0.5 ? "On target" : (after - tgt > 0 ? "+" : "−") + usd(Math.abs(after - tgt)), Math.abs(after - tgt) < 0.5 ? "" : after > tgt ? "up" : "down");
+  h += `</div>`;
+  if (S.res.shortfall > 0) h += `<div class="msg warn">Couldn't find the last ${usd(S.res.shortfall)} within the ${S.kind === "shift" ? $("#sc-cap").value : $("#sc-cap2").value}% per-line limit. Raise the limit, turn off protection, or widen where cuts come from.</div>`;
+  if (S.kind === "shift" && S.delta > 0 && S.fund === "target" && !S.need) h += `<div class="msg ok">This fits inside the current target. No cuts needed.</div>`;
+  if (S.res.cuts.length || S.kind === "shift") {
+    // GL impact
+    const glMap = {};
+    S.res.cuts.filter(c => !c.off).forEach(c => { glMap[c.r.g] = (glMap[c.r.g] || 0) + c.cut; });
+    if (S.kind === "shift") S.incs.forEach(i => {
+      if (i.nm) { const g = allGls().find(x => i.gls.has(x)); glMap[g] = (glMap[g] || 0) - i.delta; return; }
+      const gl = [...i.gls].filter(g => PLAN.rows.some(r => r.g === g)), nr = PLAN.rows.filter(r => i.gls.has(r.g)).length;
+      gl.forEach(g => { glMap[g] = (glMap[g] || 0) - Math.round(i.grpNow > 0 ? i.delta * sum(PLAN.rows.filter(r => r.g === g).map(plFy)) / i.grpNow : i.delta * PLAN.rows.filter(r => r.g === g).length / nr); });
+    });
+    const glRows = Object.entries(glMap).map(([g, v]) => ({ g, now: sum(PLAN.rows.filter(r => r.g === g).map(plFy)), chg: -v })).sort((a, b) => a.chg - b.chg);
+    const mx = Math.max(...glRows.map(x => Math.abs(x.chg)), 1);
+    h += `<div><div class="flabel" style="margin-bottom:6px">Impact by GL account</div><div style="overflow-x:auto"><table class="mini"><thead><tr><th>GL account</th><th>Now</th><th>After</th><th>Change</th></tr></thead><tbody>` +
+      glRows.map(x => `<tr><td><span class="code">${esc(x.g)}</span>${esc(PLAN.gls[x.g] || "")}</td><td class="num">${usd(x.now)}</td><td class="num">${usd(x.now + x.chg)}</td><td class="num">${x.chg > 0 ? "+" : "−"}${usd(Math.abs(x.chg))} <span class="gbar" style="width:${Math.round(Math.abs(x.chg) / mx * 36)}px;background:${x.chg > 0 ? "var(--s1)" : "var(--s2)"}"></span></td></tr>`).join("") + `</tbody></table></div></div>`;
+    if (S.res.cuts.length) h += `<div><div class="flabel" style="margin-bottom:6px">Suggested cuts by line</div><div style="overflow-x:auto;max-height:340px;overflow-y:auto"><table class="mini"><thead><tr><th></th><th>Line item</th><th style="text-align:left">Why</th><th>Now</th><th>Cut</th><th>After</th></tr></thead><tbody>` +
+      S.res.cuts.map(c => `<tr class="${c.off ? "off" : ""}"><td class="ck"><input type="checkbox" data-skip="${c.r.id}" ${c.off ? "" : "checked"} aria-label="Include ${esc(c.r.n)}"></td><td style="white-space:normal">${esc(c.r.n)}<div class="code">${esc(c.r.g)} · ${esc(plCname(c.r.c))}</div></td><td style="text-align:left"><span class="why ${c.k}">${FLEX[c.k].label}</span></td><td class="num">${usd(c.fy)}</td><td class="num">${c.off ? "–" : "−" + usd(c.cut)}</td><td class="num">${usd(c.fy - (c.off ? 0 : c.cut))}</td></tr>`).join("") + `</tbody></table></div></div>`;
+  }
+  h += `<div class="toolbar"><button class="btn" id="sc-apply" type="button">Apply to plan</button><button class="btn ghost" id="sc-discard" type="button">Discard</button><span class="sub">A snapshot is saved first, so you can undo.</span></div>`;
+  const p = $("#sc-preview"); p.innerHTML = h; p.hidden = false;
+  p.querySelectorAll("[data-skip]").forEach(cb => cb.addEventListener("change", () => {
+    const sk = new Set(SCN.skip); cb.checked ? sk.delete(cb.dataset.skip) : sk.add(cb.dataset.skip);
+    SCN.kind === "shift" ? runShift(sk) : runTarget(sk);
+  }));
+  $("#sc-discard").addEventListener("click", closePreview);
+  $("#sc-apply").addEventListener("click", applyScenario);
+  p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function applyScenario() {
+  const S = SCN; if (!S) return;
+  takeSnapshot(`Before: ${S.label}`, true, true);
+  const totBefore = planTotal();
+  if (S.kind === "remove") {
+    const ids = new Set(S.ids), gone = PLAN.rows.filter(r => ids.has(r.id)).map(r => `${r.n} (${usd(plFy(r))}, ${r.g})`);
+    if (S.mode === "zero") PLAN.rows.forEach(r => { if (ids.has(r.id)) { r.m = Array(12).fill(0); r.note = r.note ? `${r.note}; set to $0` : "Set to $0"; } });
+    else PLAN.rows = PLAN.rows.filter(r => !ids.has(r.id));
+    logChange(S.mode === "zero" ? "Set lines to $0" : "Removed lines", planTotal() - totBefore, gone);
+    RM_SEL = new Set(); closePreview(); renderPlanner(); scheduleSave();
+    toast(`${S.mode === "zero" ? "Zeroed" : "Removed"} ${ids.size} line${ids.size > 1 ? "s" : ""}. Use Undo to roll it back.`); return;
+  }
+  if (S.kind === "shift") S.incs.forEach(inc => {
+    const grp = PLAN.rows.filter(r => inc.gls.has(r.g)), now = sum(grp.map(plFy)), d = inc.delta;
+    if (inc.nm) {
+      const g = allGls().find(x => inc.gls.has(x)), last = PLAN.rows.map(r => r.g).lastIndexOf(g);
+      const row = { id: uid(), c: plGlCenter(g), g, n: inc.nm, m: Array(12).fill(0), base: 0, note: S.label, isNew: true };
+      setRowFy(row, d); PLAN.rows.splice(last + 1, 0, row); return;
+    }
+    if (now > 0) { let given = 0; grp.forEach((r, i) => { const share = i === grp.length - 1 ? d - given : Math.round(d * plFy(r) / now); given += share; setRowFy(r, plFy(r) + share); }); }
+    else { const each = Math.round(d / grp.length); grp.forEach((r, i) => setRowFy(r, plFy(r) + (i === grp.length - 1 ? d - each * (grp.length - 1) : each))); }
+  });
+  S.res.cuts.filter(c => !c.off && c.cut).forEach(c => {
+    setRowFy(c.r, plFy(c.r) - c.cut);
+    const tag = `${S.label}: −${usd(c.cut)}`; c.r.note = c.r.note ? `${c.r.note}; ${tag}` : tag;
+  });
+  logChange(S.kind === "target" ? "Hit target: cuts applied" : "Shift budget: " + S.label, planTotal() - totBefore,
+    [...(S.kind === "shift" ? S.incs.map(i => i.label) : []), ...S.res.cuts.filter(c => !c.off && c.cut).map(c => `Cut ${c.r.n}: −${usd(c.cut)}`)]);
+  closePreview(); renderPlanner(); scheduleSave();
+  toast(`Applied "${S.label}". Use Undo to roll it back.`);
+}
+
+/* ---- Change log ---- */
+function logChange(label, delta, detail) {
+  PLAN.changes = PLAN.changes || [];
+  PLAN.changes.unshift({ id: uid(), at: new Date().toISOString(), by: CURRENT_EMAIL, label, delta: Math.round(delta), detail: detail || [] });
+  PLAN.changes.length = Math.min(PLAN.changes.length, 200);
+}
+function renderLog() {
+  const cs = PLAN.changes || [], t = $("#sc-logt");
+  if (!cs.length) { t.innerHTML = `<tbody><tr><td class="empty">No scenario changes yet. Increases, cuts, removed lines, undos and restores are listed here.</td></tr></tbody>`; return; }
+  const removed = cs.filter(c => /^Removed line|^Set lines/.test(c.label)).flatMap(c => c.detail);
+  t.innerHTML = `<thead><tr><th>When</th><th>Change</th><th>Plan total</th></tr></thead><tbody>` + cs.map(c => `<tr><td style="white-space:nowrap;vertical-align:top">${esc(fmtDate(c.at))}${c.by ? `<div class="code">${esc(c.by)}</div>` : ""}</td><td style="white-space:normal"><b>${esc(c.label)}</b>${c.detail.map(d => `<div class="code">${esc(d)}</div>`).join("")}</td><td class="num" style="vertical-align:top">${Math.abs(c.delta) < 0.5 ? "–" : (c.delta > 0 ? "+" : "−") + usd(Math.abs(c.delta))}</td></tr>`).join("") + `</tbody>`;
+}
+
+/* ---- Remove lines ---- */
+let RM_SEL = new Set();
+function renderRemoveList() {
+  const q = $("#sc-rmq").value.trim().toLowerCase(), live = new Set(PLAN.rows.map(r => r.id));
+  RM_SEL = new Set([...RM_SEL].filter(id => live.has(id)));
+  const rs = PLAN.rows.filter(r => !q || r.n.toLowerCase().includes(q) || (PLAN.gls[r.g] || "").toLowerCase().includes(q) || r.g.includes(q));
+  $("#sc-rmlist").innerHTML = rs.length ? [...new Set(rs.map(r => r.g))].map(g => `<div class="rg">${esc(g)} · ${esc(PLAN.gls[g] || "")}</div>` +
+    rs.filter(r => r.g === g).map(r => `<label><input type="checkbox" data-rm="${r.id}" ${RM_SEL.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
+  rmSum();
+}
+function rmSum() {
+  const rows = PLAN.rows.filter(r => RM_SEL.has(r.id));
+  $("#sc-rmsum").textContent = rows.length ? `${rows.length} selected · ${usd(sum(rows.map(plFy)))} would come out of the plan` : "Nothing selected yet.";
+}
+$("#sc-rmq").addEventListener("input", renderRemoveList);
+$("#sc-rmlist").addEventListener("change", e => { const id = e.target.dataset.rm; if (!id) return; e.target.checked ? RM_SEL.add(id) : RM_SEL.delete(id); rmSum(); });
+$("#sc-run3").addEventListener("click", () => {
+  const rows = PLAN.rows.filter(r => RM_SEL.has(r.id)); if (!rows.length) return toast("Tick at least one line to remove.");
+  const mode = $("#sc-rmmode").value;
+  SCN = { kind: "remove", ids: rows.map(r => r.id), mode, delta: -sum(rows.map(plFy)), res: { cuts: [], shortfall: 0 }, label: `${mode === "zero" ? "Zero" : "Remove"} ${rows.length === 1 ? rows[0].n : rows.length + " lines"}` };
+  renderPreview();
+});
+function renderRemovePreview() {
+  const S = SCN, rows = PLAN.rows.filter(r => S.ids.includes(r.id)), before = planTotal(), after = before + S.delta, tgt = planTarget(null);
+  const stat = (k, v, c = "") => `<div class="stat"><div class="k">${k}</div><div class="v num ${c}">${v}</div></div>`;
+  let h = `<div class="ph" style="margin:0"><h2>Preview: ${esc(S.label)}</h2></div><div class="sc-sum">` + stat("Lines affected", rows.length) + stat("Savings", usd(-S.delta), "down") + stat("Plan total", `${usd(before)} → ${usd(after)}`, "down");
+  if (tgt) h += stat("Against target", Math.abs(after - tgt) < 0.5 ? "On target" : (after > tgt ? "+" : "−") + usd(Math.abs(after - tgt)), Math.abs(after - tgt) < 0.5 ? "" : after > tgt ? "up" : "down");
+  h += `</div><div style="overflow-x:auto"><table class="mini"><thead><tr><th>Line item</th><th>Now</th><th>After</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td style="white-space:normal">${esc(r.n)}<div class="code">${esc(r.g)} · ${esc(plCname(r.c))}</div></td><td class="num">${usd(plFy(r))}</td><td class="num">${S.mode === "zero" ? usd(0) : "removed"}</td></tr>`).join("") +
+    `</tbody></table></div><div class="toolbar"><button class="btn" id="sc-apply" type="button">Apply to plan</button><button class="btn ghost" id="sc-discard" type="button">Discard</button><span class="sub">A snapshot is saved first, so you can undo.</span></div>`;
+  const p = $("#sc-preview"); p.innerHTML = h; p.hidden = false;
+  $("#sc-discard").addEventListener("click", closePreview);
+  $("#sc-apply").addEventListener("click", applyScenario);
+  p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/* ---- Snapshots ---- */
+const cloneRows = rows => rows.map(r => ({ id: r.id, c: r.c, g: r.g, n: r.n, m: [...r.m], base: r.base, note: r.note || "" }));
+function takeSnapshot(name, auto = false, undoable = false) {
+  PLAN.snapshots = PLAN.snapshots || [];
+  PLAN.snapshots.unshift({ id: uid(), name, at: new Date().toISOString(), by: CURRENT_EMAIL, auto, undoable, total: planTotal(),
+    targets: PLAN.centers.map(c => c.target || 0), rows: cloneRows(PLAN.rows) });
+  // keep the 12 newest, dropping old automatic ones first
+  while (PLAN.snapshots.length > 12) { const i = PLAN.snapshots.map(s => s.auto).lastIndexOf(true); PLAN.snapshots.splice(i >= 0 ? i : PLAN.snapshots.length - 1, 1); }
+}
+function restoreSnapshot(id, quiet) {
+  const s = (PLAN.snapshots || []).find(x => x.id === id); if (!s) return;
+  if (!quiet) takeSnapshot(`Before restoring "${s.name}"`, true, false);
+  const tb = planTotal();
+  PLAN.rows = cloneRows(s.rows);
+  if (!quiet) logChange(`Restored snapshot "${s.name}"`, planTotal() - tb, []);
+  if (s.targets) PLAN.centers.forEach((c, i) => { if (s.targets[i] != null) c.target = s.targets[i]; });
+  renderPlanner(); scheduleSave();
+}
+$("#sc-undo").addEventListener("click", () => {
+  const s = (PLAN.snapshots || [])[0]; if (!s || !s.undoable) return;
+  const tb = planTotal(); restoreSnapshot(s.id, true); PLAN.snapshots.shift(); logChange(`Undid "${s.name.replace(/^Before: /, "")}"`, planTotal() - tb, []); renderPlanner(); scheduleSave(); toast(`Undid "${s.name.replace(/^Before: /, "")}"`);
+});
+$("#sc-snapsave").addEventListener("click", () => {
+  const nm = $("#sc-snapname").value.trim() || `Snapshot ${new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+  takeSnapshot(nm); $("#sc-snapname").value = ""; renderSnaps(); scheduleSave(); toast(`Saved "${nm}"`);
+});
+function renderSnaps() {
+  const ss = PLAN.snapshots || [], now = planTotal(), t = $("#sc-snaps");
+  if (!ss.length) { t.innerHTML = `<tbody><tr><td class="empty">No snapshots yet. Save one before trying big changes.</td></tr></tbody>`; return; }
+  t.innerHTML = `<thead><tr><th>Snapshot</th><th>Saved</th><th>Total</th><th>vs now</th><th></th></tr></thead><tbody>` + ss.map(s => {
+    const d = now - s.total;
+    return `<tr><td style="white-space:normal">${esc(s.name)}${s.auto ? ' <span class="ctag">auto</span>' : ""}</td><td>${esc(fmtDate(s.at))}</td><td class="num">${usd(s.total)}</td><td class="num">${Math.abs(d) < 0.5 ? "same" : (d > 0 ? "now +" : "now −") + usd(Math.abs(d))}</td>
+      <td style="white-space:nowrap"><button class="btn ghost" data-cmp="${s.id}" type="button">Compare</button> ${PL_RO ? "" : `<button class="btn ghost" data-rst="${s.id}" type="button">Restore</button> <button class="del" data-sdel="${s.id}" type="button" aria-label="Delete snapshot">×</button>`}</td></tr>`;
+  }).join("") + `</tbody>`;
+  t.querySelectorAll("[data-cmp]").forEach(b => b.addEventListener("click", () => compareSnap(b.dataset.cmp)));
+  t.querySelectorAll("[data-rst]").forEach(b => b.addEventListener("click", () => { restoreSnapshot(b.dataset.rst); toast("Restored. The previous version was saved as a snapshot."); }));
+  t.querySelectorAll("[data-sdel]").forEach(b => b.addEventListener("click", () => { PLAN.snapshots = PLAN.snapshots.filter(s => s.id !== b.dataset.sdel); renderSnaps(); renderLabControls(); scheduleSave(); }));
+}
+function compareSnap(id) {
+  const s = PLAN.snapshots.find(x => x.id === id); if (!s) return;
+  const gls = [...new Set([...s.rows.map(r => r.g), ...PLAN.rows.map(r => r.g)])];
+  const rowsH = gls.map(g => { const a = sum(s.rows.filter(r => r.g === g).map(r => sum(r.m))), b = sum(PLAN.rows.filter(r => r.g === g).map(plFy)); return { g, a, b, d: b - a }; }).filter(x => Math.abs(x.a) + Math.abs(x.b) > 0.5);
+  const A = sum(rowsH.map(x => x.a)), Bn = sum(rowsH.map(x => x.b));
+  $("#sc-cmp").innerHTML = `<div class="flabel" style="margin-bottom:6px">"${esc(s.name)}" vs current plan</div><div style="overflow-x:auto"><table class="mini"><thead><tr><th>GL account</th><th>Snapshot</th><th>Now</th><th>Change</th></tr></thead><tbody>` +
+    rowsH.map(x => `<tr><td><span class="code">${esc(x.g)}</span>${esc(PLAN.gls[x.g] || "")}</td><td class="num">${usd(x.a)}</td><td class="num">${usd(x.b)}</td><td class="num ${x.d > 0.5 ? "" : ""}" style="color:${x.d > 0.5 ? "var(--bad)" : x.d < -0.5 ? "var(--good)" : "var(--ink-3)"}">${Math.abs(x.d) < 0.5 ? "–" : (x.d > 0 ? "+" : "−") + usd(Math.abs(x.d))}</td></tr>`).join("") +
+    `<tr class="grand"><td><b>Total</b></td><td class="num"><b>${usd(A)}</b></td><td class="num"><b>${usd(Bn)}</b></td><td class="num"><b>${(Bn - A >= 0 ? "+" : "−") + usd(Math.abs(Bn - A))}</b></td></tr></tbody></table></div>`;
+}
+
+/* ---- Insights ---- */
+function renderInsights() {
+  const out = [], by = PLAN.baseYear;
+  const item = (ic, t, html, act) => out.push(`<li><span class="ic ${t}">${ic}</span><div>${html}${act ? `<div class="act">${act}</div>` : ""}</div></li>`);
+  // 1. target gaps
+  PLAN.centers.forEach(c => {
+    const tot = planTotalC(c.k), tgt = c.target || 0; if (!tgt) return;
+    if (tot > tgt + 0.5) {
+      const flex = sum(PLAN.rows.filter(r => r.c === c.k && ["te", "misc", "onetime"].includes(classify(r))).map(plFy));
+      const p = flex ? Math.ceil((tot - tgt) / flex * 100) : null;
+      item("!", "bad", `<b>${esc(c.name)} is ${usd(tot - tgt)} over target.</b> ${p && p <= 100 ? `Trimming its flexible spend (T&amp;E, misc, one-time items: ${usd(flex)}) by about ${p}% would close it.` : "Flexible spend alone can't close it; look at larger line items."}`,
+        PL_RO ? "" : `<button class="chip" type="button" data-ins="target" data-c="${c.k}">Suggest cuts</button>`);
+    } else if (tgt - tot > 0.5) item("✓", "good", `<b>${esc(c.name)} has ${usd(tgt - tot)} of headroom</b> under its target.`, PL_RO ? "" : `<button class="chip" type="button" data-ins="shift" data-k="p:shows">Put it into trade shows</button>`);
+  });
+  // 2. one-time items carried over
+  const one = PLAN.rows.filter(r => classify(r) === "onetime" && plFy(r) >= 5000).sort((a, b) => plFy(b) - plFy(a));
+  if (one.length) item("?", "warn", `<b>${one.length} one-off item${one.length > 1 ? "s" : ""} from ${by}</b> are in the plan at ${usd(sum(one.map(plFy)))}. Confirm they repeat: ${one.slice(0, 3).map(r => `${esc(r.n)} (${usd(plFy(r))}, ${MONTHS[r.m.findIndex(v => Math.abs(v) >= 1)]})`).join(", ")}${one.length > 3 ? "…" : ""}.`);
+  // 3. biggest increases vs base
+  const ups = PLAN.rows.filter(r => r.base > 0 && plFy(r) - r.base > 2000).sort((a, b) => (plFy(b) - b.base) - (plFy(a) - a.base)).slice(0, 3);
+  if (ups.length) item("↑", "info", `<b>Largest increases vs ${by}:</b> ${ups.map(r => `${esc(r.n)} +${usd(plFy(r) - r.base)}`).join("; ")}.`);
+  // 4. new lines
+  const fresh = PLAN.rows.filter(r => !r.base && plFy(r) > 0);
+  if (fresh.length) item("+", "info", `<b>${fresh.length} new line${fresh.length > 1 ? "s" : ""}</b> not in ${by}, totaling ${usd(sum(fresh.map(plFy)))}.`);
+  // 5. trade show share
+  const shows = PLAN.rows.filter(r => /^6233/.test(r.g)), sv = sum(shows.map(plFy)), tot = planTotal();
+  if (sv && tot) { const sb = sum(shows.map(r => r.base)); item("◆", "info", `<b>Trade shows &amp; booths are ${Math.round(sv / tot * 100)}% of the plan</b> (${usd(sv)}${sb ? `, ${sv >= sb ? "+" : "−"}${usd(Math.abs(sv - sb))} vs ${by}` : ""}). Each +10% costs about ${usd(sv * .1)}.`,
+    PL_RO ? "" : `<button class="chip" type="button" data-ins="shift" data-k="p:shows" data-v="10">Model +10%</button>`); }
+  // 6. flexible pool
+  const pool = PLAN.rows.filter(r => ["te", "misc"].includes(classify(r))), pv = sum(pool.map(plFy));
+  if (pv) item("$", "info", `<b>${usd(pv)} sits in T&amp;E and misc lines</b> (${Math.round(pv / tot * 100)}% of the plan). That's usually the easiest place to find savings.`);
+  // 7. concentration
+  const top = [...PLAN.rows].sort((a, b) => plFy(b) - plFy(a)).slice(0, 5), tv = sum(top.map(plFy));
+  if (tot) item("◎", "info", `<b>Top 5 lines are ${Math.round(tv / tot * 100)}% of the plan:</b> ${top.map(r => esc(r.n)).join(", ")}.`);
+  $("#ins").innerHTML = out.join("");
+  $("#ins").querySelectorAll("[data-ins]").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.ins === "target") { scnSetTab("target"); $("#sc-scope").value = b.dataset.c; renderGap(); runTarget(); }
+    else { scnSetTab("shift"); resetIncs(); $("#sc-grp").value = b.dataset.k; if (b.dataset.v) { $("#sc-amt").value = b.dataset.v; $("#sc-unit").value = "pct"; $("#sc-fund").value = "flat"; } else { const c = PLAN.centers.find(x => planTotalC(x.k) < (x.target || 0)); if (c) { $("#sc-amt").value = Math.round((c.target - planTotalC(c.k))); $("#sc-unit").value = "usd"; $("#sc-fund").value = "none"; } } runShift(); }
+    $("#pl-tools").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+}
+
+/* ---------- Excel export (styled, live formulas, Aptos) ---------- */
+$("#pl-export").addEventListener("click", () => {
+  if (!window.XLSX) { toast("The spreadsheet library didn't load. Reload and try again."); return; }
+  try { exportPlan(PLAN); } catch (e) { console.error(e); toast("Export failed: " + e.message); }
+});
+function exportPlan(P) {
+  const X = XLSX, wb = X.utils.book_new(), ws = {}, E = (r, c) => X.utils.encode_cell({ r, c });
+  const FONT = "Aptos", MONEY = '"$"#,##0;[Red]-"$"#,##0;"–"', PCT = '0.0%;[Red]-0.0%;"–"';
+  const st = (o = {}) => ({ font: { name: FONT, sz: o.sz || 10, bold: !!o.b, italic: !!o.i, color: { rgb: o.fc || "0E2A3A" } },
+    ...(o.fill ? { fill: { patternType: "solid", fgColor: { rgb: o.fill } } } : {}),
+    alignment: { horizontal: o.h || "left", vertical: "center", wrapText: !!o.wrap },
+    ...(o.num ? { numFmt: o.num } : {}),
+    ...(o.top ? { border: { top: { style: o.top, color: { rgb: "7A8F9B" } } } } : {}) });
+  const put = (r, c, v, s, f) => { const cell = f ? { t: "n", f, v: typeof v === "number" ? v : 0 } : typeof v === "number" ? { t: "n", v } : { t: "s", v: v == null ? "" : String(v) }; cell.s = s; ws[E(r, c)] = cell; };
+  const sheetName = `${P.year} Budget`, by = P.baseYear;
+  const C_FY = 13, C_BASE = 14, C_CHG = 15, C_PCT = 16, C_NOTE = 17, LAST = 17;
+  const colL = c => X.utils.encode_col(c);
+  let r = 0;
+  put(r++, 0, "Acteon Inc.", st({ sz: 14, b: true }));
+  put(r++, 0, `Marketing Budget ${P.year}${P.status === "submitted" ? "" : " (DRAFT)"}`, st({ sz: 12, b: true }));
+  put(r++, 0, `Prepared ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}${CURRENT_EMAIL ? " by " + CURRENT_EMAIL : ""} · Starting point: ${by} ${P.basis === "blank" ? "line items" : "full-year forecast (actuals + projections)"}${P.pct ? `, ${P.pct > 0 ? "+" : ""}${P.pct}% across the board` : ""}`, st({ i: true, fc: "47606F" }));
+  r++;
+  const HDR = st({ b: true, fc: "FFFFFF", fill: "0E2A3A", h: "center" });
+  ["CATEGORY", ...MONTHS.map(m => m.toUpperCase()), `TOTAL ${P.year}`, `${by} FORECAST`, "CHANGE", "CHANGE %", "NOTES"].forEach((h, c) => put(r, c, h, c === 0 || c === C_NOTE ? { ...HDR, alignment: { horizontal: "left", vertical: "center" } } : HDR));
+  const hdrRow = r++;
+  const centerTotRows = [], summary = { centers: [], gls: [] }, c_v = [];
+  // cached values for every formula cell, so the file reads correctly even before Excel recalculates
+  const vecOf = its => { const v = Array(16).fill(0); its.forEach(it => { it.m.forEach((x, i) => v[i + 1] += x); v[C_FY] += plFy(it); v[C_BASE] += it.base; }); v[C_CHG] = v[C_FY] - v[C_BASE]; return v; };
+  const pv = v => v[C_BASE] ? v[C_CHG] / v[C_BASE] : 0;
+  P.centers.forEach(cen => {
+    const cRows = P.rows.filter(x => x.c === cen.k); if (!cRows.length) return;
+    put(r, 0, `${cen.name.toUpperCase()} COST CENTER`, st({ b: true, sz: 11, fill: "D6EEF6" }));
+    for (let c = 1; c <= LAST; c++) put(r, c, "", st({ fill: "D6EEF6" }));
+    r++;
+    const glTotRows = [];
+    [...new Set(cRows.map(x => x.g))].forEach(g => {
+      put(r++, 0, `${g}  ${P.gls[g] || ""}`, st({ b: true }));
+      const first = r;
+      cRows.filter(x => x.g === g).forEach(it => {
+        put(r, 0, it.n, st({ wrap: false }));
+        it.m.forEach((v, i) => put(r, i + 1, v, st({ num: MONEY, h: "right" })));
+        put(r, C_FY, plFy(it), st({ num: MONEY, h: "right", b: true }), `SUM(B${r + 1}:M${r + 1})`);
+        put(r, C_BASE, it.base, st({ num: MONEY, h: "right", fc: "7A8F9B" }));
+        put(r, C_CHG, plFy(it) - it.base, st({ num: MONEY, h: "right" }), `N${r + 1}-O${r + 1}`);
+        put(r, C_PCT, it.base ? (plFy(it) - it.base) / it.base : 0, st({ num: PCT, h: "right" }), `IF(O${r + 1}=0,0,P${r + 1}/O${r + 1})`);
+        put(r, C_NOTE, it.note || "", st({ fc: "47606F" }));
+        r++;
+      });
+      const lastR = r - 1, TS = o => st({ b: true, top: "thin", fill: "EEF3F6", ...o });
+      const gv = vecOf(cRows.filter(x => x.g === g));
+      put(r, 0, `Total ${g}`, TS());
+      for (let c = 1; c <= C_CHG; c++) put(r, c, gv[c], TS({ num: MONEY, h: "right" }), `SUM(${colL(c)}${first + 1}:${colL(c)}${lastR + 1})`);
+      put(r, C_PCT, pv(gv), TS({ num: PCT, h: "right" }), `IF(O${r + 1}=0,0,P${r + 1}/O${r + 1})`); put(r, C_NOTE, "", TS());
+      glTotRows.push(r); summary.gls.push({ g, name: P.gls[g] || "", center: cen.name, row: r, plan: gv[C_FY], base: gv[C_BASE] });
+      r += 2;
+    });
+    const CT = o => st({ b: true, sz: 11, top: "medium", fill: "D6EEF6", ...o });
+    put(r, 0, `TOTAL ${cen.name.toUpperCase()}`, CT());
+    const cv = vecOf(cRows); c_v.push(cen.target || 0);
+    for (let c = 1; c <= C_CHG; c++) put(r, c, cv[c], CT({ num: MONEY, h: "right" }), glTotRows.map(x => `${colL(c)}${x + 1}`).join("+"));
+    put(r, C_PCT, pv(cv), CT({ num: PCT, h: "right" }), `IF(O${r + 1}=0,0,P${r + 1}/O${r + 1})`); put(r, C_NOTE, "", CT());
+    const totR = r; r++;
+    put(r, 0, `${cen.name} target`, st({ i: true })); put(r, C_FY, cen.target || 0, st({ num: MONEY, h: "right", i: true })); const tgtR = r; r++;
+    put(r, 0, "Over / (under) target", st({ i: true })); put(r, C_FY, cv[C_FY] - (cen.target || 0), st({ num: MONEY, h: "right", i: true, b: true }), `N${totR + 1}-N${tgtR + 1}`); r += 2;
+    centerTotRows.push(totR); summary.centers.push({ name: cen.name, base: cen.base, baseFc: cen.baseFc, totR, tgtR, plan: cv[C_FY], target: cen.target || 0 });
+  });
+  const GT = o => st({ b: true, sz: 11, fc: "FFFFFF", fill: "0E2A3A", ...o });
+  put(r, 0, `TOTAL MARKETING BUDGET ${P.year}`, GT());
+  const tv = vecOf(P.rows), tt = sum(c_v);
+  for (let c = 1; c <= C_CHG; c++) put(r, c, tv[c], GT({ num: MONEY, h: "right" }), centerTotRows.map(x => `${colL(c)}${x + 1}`).join("+"));
+  put(r, C_PCT, pv(tv), GT({ num: PCT, h: "right" }), `IF(O${r + 1}=0,0,P${r + 1}/O${r + 1})`); put(r, C_NOTE, "", GT());
+  const grandR = r; r++;
+  put(r, 0, "Total target", st({ i: true })); put(r, C_FY, tt, st({ num: MONEY, h: "right", i: true }), summary.centers.map(c => `N${c.tgtR + 1}`).join("+")); const gtR = r; r++;
+  put(r, 0, "Over / (under) target", st({ i: true, b: true })); put(r, C_FY, tv[C_FY] - tt, st({ num: MONEY, h: "right", b: true }), `N${grandR + 1}-N${gtR + 1}`); r++;
+  ws["!ref"] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r, c: LAST } });
+  ws["!cols"] = [{ wch: 46 }, ...MONTHS.map(() => ({ wch: 11 })), { wch: 13 }, { wch: 13 }, { wch: 12 }, { wch: 10 }, { wch: 40 }];
+  ws["!rows"] = []; ws["!rows"][hdrRow] = { hpt: 20 };
+  ws["!autofilter"] = undefined;
+
+  // Summary sheet, formulas point at the budget sheet so edits flow through
+  const ss = {}, P2 = (rr, c, v, s, f) => { const cell = f ? { t: "n", f, v: typeof v === "number" ? v : 0 } : typeof v === "number" ? { t: "n", v } : { t: "s", v: String(v ?? "") }; cell.s = s; ss[E(rr, c)] = cell; };
+  const ref = (col, row) => `'${sheetName}'!${col}${row + 1}`;
+  let s = 0;
+  P2(s++, 0, `Marketing Budget ${P.year}: Summary`, st({ sz: 14, b: true })); s++;
+  ["Cost center", `${by} budget`, `${by} forecast`, `${P.year} target`, `${P.year} plan`, "Plan vs target", `Change vs ${by} forecast`, "Change %"].forEach((h, c) => P2(s, c, h, { ...HDR, alignment: { horizontal: c ? "center" : "left" } }));
+  s++; const cs0 = s;
+  summary.centers.forEach(c => {
+    P2(s, 0, c.name, st()); P2(s, 1, c.base, st({ num: MONEY, h: "right" })); P2(s, 2, c.baseFc, st({ num: MONEY, h: "right" }));
+    P2(s, 3, c.target, st({ num: MONEY, h: "right" }), ref("N", c.tgtR)); P2(s, 4, c.plan, st({ num: MONEY, h: "right", b: true }), ref("N", c.totR));
+    P2(s, 5, c.plan - c.target, st({ num: MONEY, h: "right" }), `E${s + 1}-D${s + 1}`); P2(s, 6, c.plan - c.baseFc, st({ num: MONEY, h: "right" }), `E${s + 1}-C${s + 1}`); P2(s, 7, c.baseFc ? (c.plan - c.baseFc) / c.baseFc : 0, st({ num: PCT, h: "right" }), `IF(C${s + 1}=0,0,G${s + 1}/C${s + 1})`); s++;
+  });
+  P2(s, 0, "Total", st({ b: true, top: "thin" }));
+  const SC = summary.centers, tot = [0, sum(SC.map(c => c.base)), sum(SC.map(c => c.baseFc)), sum(SC.map(c => c.target)), sum(SC.map(c => c.plan))]; tot[5] = tot[4] - tot[3]; tot[6] = tot[4] - tot[2];
+  for (let c = 1; c <= 6; c++) P2(s, c, tot[c], st({ b: true, top: "thin", num: MONEY, h: "right" }), `SUM(${colL(c)}${cs0 + 1}:${colL(c)}${s})`);
+  P2(s, 7, tot[2] ? tot[6] / tot[2] : 0, st({ b: true, top: "thin", num: PCT, h: "right" }), `IF(C${s + 1}=0,0,G${s + 1}/C${s + 1})`); s += 3;
+  ["GL account", "Description", "Cost center", `${by} forecast`, `${P.year} plan`, "Change", "Change %"].forEach((h, c) => P2(s, c, h, { ...HDR, alignment: { horizontal: c > 2 ? "center" : "left" } }));
+  s++;
+  summary.gls.forEach(g => {
+    P2(s, 0, g.g, st()); P2(s, 1, g.name, st()); P2(s, 2, g.center, st());
+    P2(s, 3, g.base, st({ num: MONEY, h: "right" }), ref("O", g.row)); P2(s, 4, g.plan, st({ num: MONEY, h: "right", b: true }), ref("N", g.row));
+    P2(s, 5, g.plan - g.base, st({ num: MONEY, h: "right" }), `E${s + 1}-D${s + 1}`); P2(s, 6, g.base ? (g.plan - g.base) / g.base : 0, st({ num: PCT, h: "right" }), `IF(D${s + 1}=0,0,F${s + 1}/D${s + 1})`); s++;
+  });
+  ss["!ref"] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: s, c: 7 } });
+  ss["!cols"] = [{ wch: 16 }, { wch: 44 }, { wch: 16 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 22 }, { wch: 11 }];
+
+  X.utils.book_append_sheet(wb, ss, "Summary");
+  X.utils.book_append_sheet(wb, ws, sheetName);
+  const stamp = new Date().toISOString().slice(0, 10);
+  X.writeFile(wb, `Acteon_Marketing_Budget_${P.year}${P.status === "submitted" ? "" : "_DRAFT"}_${stamp}.xlsx`, { cellStyles: true });
+  toast("Excel file downloaded");
+}
+
+
+/* theme toggle: Auto (follows Windows) → Light → Dark */
+(() => {
+  const b = $("#b-theme"), L = { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" };
+  const cur = () => document.documentElement.getAttribute("data-theme") || "auto";
+  const paint = () => { b.textContent = L[cur()]; b.title = cur() === "auto" ? "Following your system setting. Click for light." : "Click to change theme"; };
+  b.addEventListener("click", () => {
+    const next = { auto: "light", light: "dark", dark: "auto" }[cur()];
+    if (next === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", next);
+    try { next === "auto" ? localStorage.removeItem("acteon-theme") : localStorage.setItem("acteon-theme", next); } catch (e) {}
+    paint(); if (D && VIEW === "dash") render();
+  });
+  paint();
+})();
+/* =====================================================================
+   5. BOOT, AUTH, YEARS
+   ===================================================================== */
+let CURRENT_EMAIL = "";
+const show = v => { $("#v-loading").hidden = v !== "loading"; $("#v-login").hidden = v !== "login"; $("#v-app").hidden = v !== "app"; };
+
+async function loadYears(pick) {
+  const ys = await B.listYears();
+  const sel = $("#year");
+  sel.innerHTML = ys.map(y => `<option>${esc(y)}</option>`).join(""); sel.hidden = ys.length < 2;
+  const want = pick && ys.includes(pick) ? pick : ys.includes(String(new Date().getFullYear())) ? String(new Date().getFullYear()) : ys[ys.length - 1];
+  if (!want) { D = null; if (VIEW === "dash") { $("#h-title").textContent = "Marketing Spend"; $("#h-sub").textContent = ""; $("#h-upd").textContent = ""; } showView(VIEW); return; }
+  sel.value = want;
+  D = await B.load(want);
+  showView(VIEW);
+}
+$("#year").addEventListener("change", e => loadYears(e.target.value));
+
+async function onUser(u) {
+  if (!u) { show("login"); return; }
+  CURRENT_EMAIL = B.preview ? "" : (u.email || "");
+  ADMIN = await B.isAdmin();
+  $("#who").textContent = B.preview ? "" : u.email;
+  $("#b-signout").hidden = B.preview;
+  $("#nd-import").hidden = !ADMIN;
+  if (!ADMIN) $("#nd-text").textContent = "Nothing has been imported for this year yet. Ask an admin to import the Marketing workbook.";
+  $("#preview-banner").hidden = !B.preview;
+  show("app");
+  try { await loadYears(); } catch (e) { toast("Couldn't load data: " + e.message); }
+}
+
+$("#login-form").addEventListener("submit", async e => {
+  e.preventDefault(); const err = $("#li-err"), btn = $("#li-btn"); err.hidden = true; err.className = "msg err";
+  btn.disabled = true; btn.textContent = "Signing in…";
+  try { await B.signIn($("#li-email").value.trim(), $("#li-pass").value); }
+  catch (ex) { err.textContent = /invalid|wrong|not-found|credential/i.test(ex.code || "") ? "That email and password don't match an account." : /too-many/.test(ex.code || "") ? "Too many attempts. Wait a minute or reset your password." : "Sign-in failed: " + (ex.message || ex.code); err.hidden = false; }
+  btn.disabled = false; btn.textContent = "Sign in";
+});
+$("#li-reset").addEventListener("click", async () => {
+  const em = $("#li-email").value.trim(), err = $("#li-err");
+  if (!em) { err.className = "msg err"; err.textContent = "Enter your email first, then click Forgot password."; err.hidden = false; return; }
+  try { await B.reset(em); err.className = "msg ok"; err.textContent = `If ${em} has an account, a reset link is on its way.`; err.hidden = false; }
+  catch (ex) { err.className = "msg err"; err.textContent = "Couldn't send the reset email: " + ex.message; err.hidden = false; }
+});
+$("#b-signout").addEventListener("click", () => B.signOut());
+
+(async () => {
+  try { B = PREVIEW ? localBackend() : await firebaseBackend(); }
+  catch (e) { $("#v-loading").textContent = "Couldn't load Firebase. Check the config in index.html and your connection."; return; }
+  B.init(onUser);
+})();
+</script>
+</body>
+</html>

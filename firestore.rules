@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // An admin is any signed-in user whose email has a document in /admins
+    // (document ID = their email, all lowercase).
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower()));
+    }
+
+    // Published spend data per year + import history snapshots
+    match /datasets/{year} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+      match /imports/{id} {
+        allow read: if signedIn();
+        allow create: if isAdmin();
+      }
+    }
+
+    // Budget plans (Budget planner tab)
+    match /plans/{year} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Admin list: users can only check their own entry; manage it in the console
+    match /admins/{email} {
+      allow read: if signedIn() && request.auth.token.email.lower() == email;
+      allow write: if false;
+    }
+  }
+}
