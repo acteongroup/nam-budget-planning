@@ -1964,6 +1964,28 @@ function exportPlan(P) {
 
   X.utils.book_append_sheet(wb, ss, "Summary");
   X.utils.book_append_sheet(wb, ws, sheetName);
+
+  // Change log sheet: every applied scenario, removed line, instruction, undo and restore
+  const cl = {}, CL = (rr, c, v, sty) => { cl[E(rr, c)] = typeof v === "number" ? { t: "n", v, s: sty } : { t: "s", v: String(v ?? ""), s: sty }; };
+  let q = 0;
+  CL(q++, 0, `Marketing Budget ${P.year}: Change log`, st({ sz: 14, b: true }));
+  CL(q++, 0, "Scenario changes in the planner, newest first. Typing directly into the grid is not logged.", st({ i: true, fc: "47606F" })); q++;
+  ["When", "By", "Change", "Detail", "Plan total effect"].forEach((h, c) => CL(q, c, h, { ...HDR, alignment: { horizontal: c === 4 ? "center" : "left", vertical: "center" } }));
+  q++;
+  const logs = P.changes || [];
+  if (!logs.length) CL(q++, 0, "No scenario changes recorded.", st({ i: true }));
+  logs.forEach(ch => {
+    const det = ch.detail && ch.detail.length ? ch.detail : [""];
+    det.forEach((d, i) => {
+      CL(q, 0, i ? "" : fmtDate(ch.at), st({ wrap: false })); CL(q, 1, i ? "" : (ch.by || ""), st());
+      CL(q, 2, i ? "" : ch.label, st({ b: true })); CL(q, 3, d, st());
+      if (!i) CL(q, 4, ch.delta || 0, st({ num: MONEY, h: "right", b: true })); else CL(q, 4, "", st());
+      q++;
+    });
+  });
+  cl["!ref"] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: Math.max(q, 4), c: 4 } });
+  cl["!cols"] = [{ wch: 22 }, { wch: 28 }, { wch: 46 }, { wch: 70 }, { wch: 18 }];
+  X.utils.book_append_sheet(wb, cl, "Change log");
   const stamp = new Date().toISOString().slice(0, 10);
   X.writeFile(wb, `Acteon_Marketing_Budget_${P.year}${P.status === "submitted" ? "" : "_DRAFT"}_${stamp}.xlsx`, { cellStyles: true });
   toast("Excel file downloaded");
