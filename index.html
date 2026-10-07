@@ -393,6 +393,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
               <ul><li><b>Increase:</b> choose an area (a group like Trade shows, or a single GL account). Use <b>+ Add another increase</b> to raise several areas in one scenario.</li>
               <li><b>By:</b> a <b>%</b> of the area's current plan, a flat <b>$</b>, or <b>$ each &times; qty</b> (for example 4 KOLs at $15,000 each).</li>
               <li><b>Add as a new line:</b> give it a name (e.g. "4 new KOLs") to add the money as its own line item. Leave it blank to spread the increase across the area's existing lines in proportion to their size.</li>
+              <li><b>Also remove lines:</b> open that section to drop line items in the same scenario. The money they free up counts toward paying for the increases, so less is cut elsewhere.</li>
               <li><b>Pay for it by:</b> <i>Cutting other accounts</i> keeps the total flat; <i>Cutting only enough to stay within target</i> only trims what pushes you over the target; <i>Adding to the total</i> makes no cuts.</li></ul></div>
             <div><h4>Where cuts come from</h4>
               <p>Every other line gets a flexibility weight. Cuts are shared out by <b>size &times; flexibility</b>, so large, flexible lines give the most. No line gives more than <b>Max cut per line</b>.</p>
@@ -423,6 +424,10 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
               <label><span class="flabel">Max cut per line</span><select id="sc-cap"><option>10</option><option>15</option><option>20</option><option selected>25</option><option>35</option><option>50</option></select></label>
             </div>
             <label class="chk"><input type="checkbox" id="sc-protect" checked> Protect recurring monthly commitments (retainers, contracts, catalogs)</label>
+            <details class="guide" id="sc-srm" style="margin:0"><summary>Also remove lines in this scenario (optional)</summary><div class="gb">
+              <div class="toolbar"><input id="sc-srmq" type="search" placeholder="Filter lines" aria-label="Filter lines to remove" style="flex:1;min-width:200px"><select id="sc-srmmode" aria-label="How to remove"><option value="remove">Remove the line completely</option><option value="zero">Keep the line, set to $0</option></select></div>
+              <div class="rmlist" id="sc-srmlist"></div><div class="sub" id="sc-srmsum"></div>
+              <div class="sub">Removed lines free up budget, so less has to be cut elsewhere to pay for the increases.</div></div></details>
             <div class="sc-quick" id="sc-quick"></div>
             <div><button class="btn" id="sc-run" type="button">Preview scenario</button></div>
           </div>
@@ -1375,8 +1380,8 @@ function setRowFy(r, want) {
 }
 
 /* spread `amount` of cuts across eligible lines, weighted by size x flexibility, capped per line */
-function proposeCuts({ amount, excludeGls = new Set(), center = null, cap = .25, protect = true, skip = new Set() }) {
-  const cand = PLAN.rows.filter(r => !excludeGls.has(r.g) && (!center || r.c === center) && plFy(r) > 0)
+function proposeCuts({ amount, excludeGls = new Set(), center = null, cap = .25, protect = true, skip = new Set(), drop = new Set() }) {
+  const cand = PLAN.rows.filter(r => !excludeGls.has(r.g) && !drop.has(r.id) && (!center || r.c === center) && plFy(r) > 0)
     .map(r => { const k = classify(r); return { r, k, fy: plFy(r), f: protect && k === "recurring" ? 0 : FLEX[k].f, max: Math.floor(plFy(r) * cap), cut: 0, off: skip.has(r.id) }; })
     .filter(c => c.f > 0 && c.max > 0);
   const live = cand.filter(c => !c.off);
@@ -1422,6 +1427,7 @@ function renderLabControls() {
   if (!$("#sc-snap").hidden) renderSnaps();
   if (!$("#sc-target").hidden) renderGap();
   if (!$("#sc-remove").hidden) renderRemoveList();
+  if ($("#sc-srm").open) renderShiftRm();
   if (!$("#sc-log").hidden) renderLog();
 }
 $("#sc-quick").addEventListener("click", e => {
@@ -1456,25 +1462,27 @@ $("#sc-incs").addEventListener("click", e => { const b = e.target.closest(".inc-
 function runShift(skip = new Set()) {
   const fund = $("#sc-fund").value, cap = +$("#sc-cap").value / 100, protect = $("#sc-protect").checked;
   const incs = []; let noRows = false, zeroPct = false;
+  const drop = new Set(SHIFT_RM), dropRows = PLAN.rows.filter(r => drop.has(r.id)), freed = sum(dropRows.map(plFy)), dmode = $("#sc-srmmode").value;
   document.querySelectorAll("#sc-incs .inc").forEach(row => {
     const key = row.querySelector(".inc-grp").value, unit = row.querySelector(".inc-unit").value, amt = pnum(row.querySelector(".inc-amt").value);
     const qty = Math.max(1, Math.round(pnum(row.querySelector(".inc-qty").value) || 1)), nm = row.querySelector(".inc-new").value.trim();
-    const gls = new Set(groupGls(key)), grpRows = PLAN.rows.filter(r => gls.has(r.g)), grpNow = sum(grpRows.map(plFy));
+    const gls = new Set(groupGls(key)), grpRows = PLAN.rows.filter(r => gls.has(r.g) && !drop.has(r.id)), grpNow = sum(grpRows.map(plFy));
     if (!grpRows.length) { noRows = true; return; }
     const delta = Math.round(unit === "pct" ? grpNow * amt / 100 : unit === "ea" ? amt * qty : amt);
     if (!delta) { if (unit === "pct" && !grpNow && amt) zeroPct = true; return; }
     const nice = unit === "pct" ? Math.abs(amt) + "%" : unit === "ea" ? `${qty} × ${usd(Math.abs(amt))}` : usd(Math.abs(delta));
     incs.push({ key, gls, delta, grpNow, nm: delta > 0 ? nm : "", label: `${nm && delta > 0 ? nm + " in " : ""}${groupName(key).trim()} ${delta > 0 ? "+" : "−"}${nice}` });
   });
-  if (!incs.length) return toast(noRows ? "That group has no line items in the plan." : zeroPct ? "That group is at $0, so a % change does nothing. Use $ instead." : "Enter an amount to change.");
+  if (!incs.length && !drop.size) return toast(noRows ? "That group has no line items in the plan." : zeroPct ? "That group is at $0, so a % change does nothing. Use $ instead." : "Enter an amount to change.");
   const delta = sum(incs.map(i => i.delta)), allGlSet = new Set(incs.flatMap(i => [...i.gls]));
   const centers = new Set(PLAN.rows.filter(r => allGlSet.has(r.g)).map(r => r.c));
   const center = $("#sc-from").value === "same" && centers.size === 1 ? [...centers][0] : null;
   let need = 0;
-  if (delta > 0 && fund === "flat") need = delta;
-  if (delta > 0 && fund === "target") { const tgt = planTarget(null); need = tgt ? Math.max(0, planTotal() + delta - tgt) : delta; }
-  const res = need > 0 ? proposeCuts({ amount: need, excludeGls: allGlSet, center, cap, protect, skip }) : { cuts: [], shortfall: 0 };
-  SCN = { kind: "shift", incs, delta, need, fund, res, skip, label: incs.length <= 2 ? incs.map(i => i.label).join(" and ") : `${incs.length} increases (${delta > 0 ? "+" : "−"}${usd(Math.abs(delta))})` };
+  if (delta > 0 && fund === "flat") need = Math.max(0, delta - freed);
+  if (delta > 0 && fund === "target") { const tgt = planTarget(null); need = tgt ? Math.max(0, planTotal() - freed + delta - tgt) : Math.max(0, delta - freed); }
+  const res = need > 0 ? proposeCuts({ amount: need, excludeGls: allGlSet, center, cap, protect, skip, drop }) : { cuts: [], shortfall: 0 };
+  const lbl = [incs.length ? (incs.length <= 2 ? incs.map(i => i.label).join(" and ") : `${incs.length} increases (${delta > 0 ? "+" : "−"}${usd(Math.abs(delta))})`) : "", drop.size ? (dmode === "zero" ? "zero " : "remove ") + (dropRows.length === 1 ? dropRows[0].n : dropRows.length + " lines") : ""].filter(Boolean).join(" and ");
+  SCN = { kind: "shift", incs, delta, need, fund, res, skip, drop: [...drop], dmode, freed, label: lbl };
   renderPreview();
 }
 $("#sc-run").addEventListener("click", () => runShift());
@@ -1503,11 +1511,12 @@ function closePreview() { SCN = null; $("#sc-preview").hidden = true; $("#sc-pre
 function renderPreview() {
   if (SCN.kind === "remove") return renderRemovePreview();
   const S = SCN, cuts = S.res.cuts.filter(c => !c.off), cutTot = sum(cuts.map(c => c.cut));
-  const before = planTotal(), after = before + S.delta - cutTot, tgt = planTarget(S.kind === "target" ? S.center : null);
+  const freed = S.freed || 0, before = planTotal(), after = before + S.delta - freed - cutTot, tgt = planTarget(S.kind === "target" ? S.center : null);
   const cls = v => v > 0.5 ? "up" : v < -0.5 ? "down" : "";
   const stat = (k, v, c = "") => `<div class="stat"><div class="k">${k}</div><div class="v num ${c}">${v}</div></div>`;
   let h = `<div class="ph" style="margin:0"><h2>Preview: ${esc(S.label)}</h2><span class="sub">Uncheck any line to protect it; the cut moves to other lines.</span></div><div class="sc-sum">`;
   if (S.kind === "shift") S.incs.forEach(i => { h += stat(esc(groupName(i.key).trim()) + (i.nm ? ` · ${esc(i.nm)}` : ""), `${usd(i.grpNow)} → ${usd(i.grpNow + i.delta)}`); });
+  if (freed) h += stat("Lines removed", `−${usd(freed)}`, "down");
   h += stat("Cuts suggested", usd(cutTot), cutTot ? "down" : "") + stat("Plan total", `${usd(before)} → ${usd(after)}`, cls(after - before));
   if (tgt) h += stat("Against target", Math.abs(after - tgt) < 0.5 ? "On target" : (after - tgt > 0 ? "+" : "−") + usd(Math.abs(after - tgt)), Math.abs(after - tgt) < 0.5 ? "" : after > tgt ? "up" : "down");
   h += `</div>`;
@@ -1522,10 +1531,12 @@ function renderPreview() {
       const gl = [...i.gls].filter(g => PLAN.rows.some(r => r.g === g)), nr = PLAN.rows.filter(r => i.gls.has(r.g)).length;
       gl.forEach(g => { glMap[g] = (glMap[g] || 0) - Math.round(i.grpNow > 0 ? i.delta * sum(PLAN.rows.filter(r => r.g === g).map(plFy)) / i.grpNow : i.delta * PLAN.rows.filter(r => r.g === g).length / nr); });
     });
+    if (S.drop) PLAN.rows.filter(r => S.drop.includes(r.id)).forEach(r => { glMap[r.g] = (glMap[r.g] || 0) + plFy(r); });
     const glRows = Object.entries(glMap).map(([g, v]) => ({ g, now: sum(PLAN.rows.filter(r => r.g === g).map(plFy)), chg: -v })).sort((a, b) => a.chg - b.chg);
     const mx = Math.max(...glRows.map(x => Math.abs(x.chg)), 1);
     h += `<div><div class="flabel" style="margin-bottom:6px">Impact by GL account</div><div style="overflow-x:auto"><table class="mini"><thead><tr><th>GL account</th><th>Now</th><th>After</th><th>Change</th></tr></thead><tbody>` +
       glRows.map(x => `<tr><td><span class="code">${esc(x.g)}</span>${esc(PLAN.gls[x.g] || "")}</td><td class="num">${usd(x.now)}</td><td class="num">${usd(x.now + x.chg)}</td><td class="num">${x.chg > 0 ? "+" : "−"}${usd(Math.abs(x.chg))} <span class="gbar" style="width:${Math.round(Math.abs(x.chg) / mx * 36)}px;background:${x.chg > 0 ? "var(--s1)" : "var(--s2)"}"></span></td></tr>`).join("") + `</tbody></table></div></div>`;
+    if (S.drop && S.drop.length) h += `<div><div class="flabel" style="margin-bottom:6px">Lines ${S.dmode === "zero" ? "set to $0" : "removed"}</div><div style="overflow-x:auto"><table class="mini"><tbody>` + PLAN.rows.filter(r => S.drop.includes(r.id)).map(r => `<tr><td style="white-space:normal">${esc(r.n)}<div class="code">${esc(r.g)} · ${esc(plCname(r.c))}</div></td><td class="num">${usd(plFy(r))}</td></tr>`).join("") + `</tbody></table></div></div>`;
     if (S.res.cuts.length) h += `<div><div class="flabel" style="margin-bottom:6px">Suggested cuts by line</div><div style="overflow-x:auto;max-height:340px;overflow-y:auto"><table class="mini"><thead><tr><th></th><th>Line item</th><th style="text-align:left">Why</th><th>Now</th><th>Cut</th><th>After</th></tr></thead><tbody>` +
       S.res.cuts.map(c => `<tr class="${c.off ? "off" : ""}"><td class="ck"><input type="checkbox" data-skip="${c.r.id}" ${c.off ? "" : "checked"} aria-label="Include ${esc(c.r.n)}"></td><td style="white-space:normal">${esc(c.r.n)}<div class="code">${esc(c.r.g)} · ${esc(plCname(c.r.c))}</div></td><td style="text-align:left"><span class="why ${c.k}">${FLEX[c.k].label}</span></td><td class="num">${usd(c.fy)}</td><td class="num">${c.off ? "–" : "−" + usd(c.cut)}</td><td class="num">${usd(c.fy - (c.off ? 0 : c.cut))}</td></tr>`).join("") + `</tbody></table></div></div>`;
   }
@@ -1551,6 +1562,13 @@ function applyScenario() {
     RM_SEL = new Set(); closePreview(); renderPlanner(); scheduleSave();
     toast(`${S.mode === "zero" ? "Zeroed" : "Removed"} ${ids.size} line${ids.size > 1 ? "s" : ""}. Use Undo to roll it back.`); return;
   }
+  const gone = S.kind === "shift" && S.drop ? PLAN.rows.filter(r => S.drop.includes(r.id)).map(r => `${S.dmode === "zero" ? "Zeroed" : "Removed"}: ${r.n} (${usd(plFy(r))}, ${r.g})`) : [];
+  if (S.kind === "shift" && S.drop && S.drop.length) {
+    const ids = new Set(S.drop);
+    if (S.dmode === "zero") PLAN.rows.forEach(r => { if (ids.has(r.id)) { r.m = Array(12).fill(0); r.note = r.note ? `${r.note}; set to $0` : "Set to $0"; } });
+    else PLAN.rows = PLAN.rows.filter(r => !ids.has(r.id));
+    SHIFT_RM = new Set();
+  }
   if (S.kind === "shift") S.incs.forEach(inc => {
     const grp = PLAN.rows.filter(r => inc.gls.has(r.g)), now = sum(grp.map(plFy)), d = inc.delta;
     if (inc.nm) {
@@ -1566,7 +1584,7 @@ function applyScenario() {
     const tag = `${S.label}: −${usd(c.cut)}`; c.r.note = c.r.note ? `${c.r.note}; ${tag}` : tag;
   });
   logChange(S.kind === "target" ? "Hit target: cuts applied" : "Shift budget: " + S.label, planTotal() - totBefore,
-    [...(S.kind === "shift" ? S.incs.map(i => i.label) : []), ...S.res.cuts.filter(c => !c.off && c.cut).map(c => `Cut ${c.r.n}: −${usd(c.cut)}`)]);
+    [...gone, ...(S.kind === "shift" ? S.incs.map(i => i.label) : []), ...S.res.cuts.filter(c => !c.off && c.cut).map(c => `Cut ${c.r.n}: −${usd(c.cut)}`)]);
   closePreview(); renderPlanner(); scheduleSave();
   toast(`Applied "${S.label}". Use Undo to roll it back.`);
 }
@@ -1585,6 +1603,19 @@ function renderLog() {
 }
 
 /* ---- Remove lines ---- */
+let SHIFT_RM = new Set();
+function renderShiftRm() {
+  const q = $("#sc-srmq").value.trim().toLowerCase(), live = new Set(PLAN.rows.map(r => r.id));
+  SHIFT_RM = new Set([...SHIFT_RM].filter(id => live.has(id)));
+  const rs = PLAN.rows.filter(r => !q || r.n.toLowerCase().includes(q) || (PLAN.gls[r.g] || "").toLowerCase().includes(q) || r.g.includes(q));
+  $("#sc-srmlist").innerHTML = rs.length ? [...new Set(rs.map(r => r.g))].map(g => `<div class="rg">${esc(g)} · ${esc(PLAN.gls[g] || "")}</div>` +
+    rs.filter(r => r.g === g).map(r => `<label><input type="checkbox" data-srm="${r.id}" ${SHIFT_RM.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
+  const rows = PLAN.rows.filter(r => SHIFT_RM.has(r.id));
+  $("#sc-srmsum").textContent = rows.length ? `${rows.length} selected · ${usd(sum(rows.map(plFy)))} freed` : "Nothing selected.";
+}
+$("#sc-srmq").addEventListener("input", renderShiftRm);
+$("#sc-srm").addEventListener("toggle", renderShiftRm);
+$("#sc-srmlist").addEventListener("change", e => { const id = e.target.dataset.srm; if (!id) return; e.target.checked ? SHIFT_RM.add(id) : SHIFT_RM.delete(id); renderShiftRm(); });
 let RM_SEL = new Set();
 function renderRemoveList() {
   const q = $("#sc-rmq").value.trim().toLowerCase(), live = new Set(PLAN.rows.map(r => r.id));
