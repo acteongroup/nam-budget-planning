@@ -220,7 +220,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
 .pgrid tr.new td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 .del{background:none;border:0;color:var(--ink-3);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px}
 .del:hover{color:var(--bad);background:var(--bad-bg)}
-.addline{font-size:12px;font-weight:500;background:transparent;border:1px dashed var(--ink-3);color:var(--ink-2);border-radius:6px;padding:3px 10px;cursor:pointer}
+.addline{font-size:14px;line-height:1;font-weight:600;background:transparent;border:1px dashed var(--ink-3);color:var(--ink-2);border-radius:6px;width:22px;height:22px;padding:0;margin-right:6px;cursor:pointer;vertical-align:middle}
 .addline:hover{border-color:var(--accent);color:var(--accent-ink)}
 .mini input.tgt{width:140px}
 .savestate{font-size:12px;color:var(--ink-3)}
@@ -497,7 +497,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
             <button class="btn ghost" id="pl-expand" type="button">Collapse all</button>
           </div></div>
         <div class="tablewrap"><table class="ledger pgrid" id="pl-grid"></table></div>
-        <p class="hint">Type over any month, or type a new full-year total to rescale that row's months. Use "Add line" on a GL account for new spend. Changes save automatically.</p>
+        <p class="hint">Type over any month, or type a new full-year total to rescale that row's months. Use the + at the start of a GL account row for new spend. Changes save automatically.</p>
       </section>
       <section class="panel toolbar" style="justify-content:space-between">
         <div class="toolbar">
@@ -1076,6 +1076,7 @@ $("#b-history").addEventListener("click", async () => {
             rows:[{id,c,g,n,m[12],base,note}], plus created/updated/submitted stamps }
    ===================================================================== */
 let VIEW = "dash", PLAN = null, PL_RO = true, saveT = null, saving = false, pendingSave = false;
+const byName = (a, b) => a.n.localeCompare(b.n, undefined, { sensitivity: "base", numeric: true });
 const plst = { q: "", c: "all", closed: new Set() };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const plFy = r => sum(r.m);
@@ -1229,9 +1230,9 @@ function renderGrid() {
   const gs = [...new Set(rs.map(r => r.g))];
   gs.forEach(g => {
     const closed = plst.closed.has(g);
-    h += `<tr class="gl ${closed ? "closed" : ""}" data-g="${esc(g)}"><td><span class="chev">▾</span><span class="code">${esc(g)}</span>${esc(PLAN.gls[g] || "")}<span class="ctag">${esc(plCname(plGlCenter(g)))}</span></td>${MONTHS.map((_, i) => `<td class="num" data-gm="${esc(g)}|${i}"></td>`).join("")}<td class="num tot" data-gm="${esc(g)}|fy"></td><td class="num base" data-gm="${esc(g)}|base"></td><td class="num" data-gm="${esc(g)}|d"></td><td colspan="2">${PL_RO ? "" : `<button class="addline" type="button" data-add="${esc(g)}">+ Add line</button>`}</td></tr>`;
+    h += `<tr class="gl ${closed ? "closed" : ""}" data-g="${esc(g)}"><td>${PL_RO ? "" : `<button class="addline" type="button" data-add="${esc(g)}" title="Add a line to this account" aria-label="Add a line to ${esc(g)}">+</button>`}<span class="chev">▾</span><span class="code">${esc(g)}</span>${esc(PLAN.gls[g] || "")}<span class="ctag">${esc(plCname(plGlCenter(g)))}</span></td>${MONTHS.map((_, i) => `<td class="num" data-gm="${esc(g)}|${i}"></td>`).join("")}<td class="num tot" data-gm="${esc(g)}|fy"></td><td class="num base" data-gm="${esc(g)}|base"></td><td class="num" data-gm="${esc(g)}|d"></td><td colspan="2"></td></tr>`;
     if (closed) return;
-    rs.filter(r => r.g === g).forEach(r => {
+    rs.filter(r => r.g === g).sort(byName).forEach(r => {
       h += `<tr data-row="${r.id}" class="${r.base === 0 && r.isNew ? "new" : ""}"><td><input class="nm" data-r="${r.id}" data-f="n" value="${esc(r.n)}" ${dis} aria-label="Line item name"></td>` +
         r.m.map((v, i) => `<td><input data-r="${r.id}" data-i="${i}" inputmode="decimal" value="${v ? fmt0(v) : ""}" placeholder="–" ${dis} aria-label="${esc(r.n)} ${MONTHS[i]}"></td>`).join("") +
         `<td class="tot"><input class="fy" data-r="${r.id}" data-f="fy" inputmode="decimal" value="${fmt0(plFy(r))}" ${dis} aria-label="${esc(r.n)} full year"></td><td class="num base">${r.base ? usd(r.base) : "–"}</td><td class="num" data-d="${r.id}"></td>` +
@@ -1747,7 +1748,7 @@ function renderShiftRm() {
   SHIFT_RM = new Set([...SHIFT_RM].filter(id => live.has(id)));
   const rs = PLAN.rows.filter(r => !q || r.n.toLowerCase().includes(q) || (PLAN.gls[r.g] || "").toLowerCase().includes(q) || r.g.includes(q));
   $("#sc-srmlist").innerHTML = rs.length ? [...new Set(rs.map(r => r.g))].map(g => `<div class="rg">${esc(g)} · ${esc(PLAN.gls[g] || "")}</div>` +
-    rs.filter(r => r.g === g).map(r => `<label><input type="checkbox" data-srm="${r.id}" ${SHIFT_RM.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
+    rs.filter(r => r.g === g).sort(byName).map(r => `<label><input type="checkbox" data-srm="${r.id}" ${SHIFT_RM.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
   const rows = PLAN.rows.filter(r => SHIFT_RM.has(r.id));
   $("#sc-srmsum").textContent = rows.length ? `${rows.length} selected · ${usd(sum(rows.map(plFy)))} freed` : "Nothing selected.";
 }
@@ -1760,7 +1761,7 @@ function renderRemoveList() {
   RM_SEL = new Set([...RM_SEL].filter(id => live.has(id)));
   const rs = PLAN.rows.filter(r => !q || r.n.toLowerCase().includes(q) || (PLAN.gls[r.g] || "").toLowerCase().includes(q) || r.g.includes(q));
   $("#sc-rmlist").innerHTML = rs.length ? [...new Set(rs.map(r => r.g))].map(g => `<div class="rg">${esc(g)} · ${esc(PLAN.gls[g] || "")}</div>` +
-    rs.filter(r => r.g === g).map(r => `<label><input type="checkbox" data-rm="${r.id}" ${RM_SEL.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
+    rs.filter(r => r.g === g).sort(byName).map(r => `<label><input type="checkbox" data-rm="${r.id}" ${RM_SEL.has(r.id) ? "checked" : ""} ${PL_RO ? "disabled" : ""}> ${esc(r.n)}<span class="a">${usd(plFy(r))}</span></label>`).join("")).join("") : `<div class="rg">No line items match.</div>`;
   rmSum();
 }
 function rmSum() {
@@ -1970,7 +1971,7 @@ function exportPlan(P) {
     [...new Set(cRows.map(x => x.g))].forEach(g => {
       put(r++, 0, `${g}  ${P.gls[g] || ""}`, st({ b: true }));
       const first = r;
-      cRows.filter(x => x.g === g).forEach(it => {
+      cRows.filter(x => x.g === g).sort(byName).forEach(it => {
         put(r, 0, it.n, st({ wrap: false }));
         it.m.forEach((v, i) => put(r, i + 1, v, st({ num: MONEY, h: "right" })));
         put(r, C_FY, plFy(it), st({ num: MONEY, h: "right", b: true }), `SUM(B${r + 1}:M${r + 1})`);
