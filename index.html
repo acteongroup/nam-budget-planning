@@ -206,6 +206,10 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
 .pl-form h2{margin:0;font-size:18px}
 .pl-form p{margin:0;color:var(--ink-2)}
 .pgrid{min-width:1500px}
+/* month header stays visible while scrolling the planner grid: the grid scrolls inside its own frame */
+#planner .tablewrap{max-height:calc(100vh - 130px);overflow:auto}
+.pgrid thead th{position:sticky;top:0;z-index:3;box-shadow:0 1px 0 var(--line)}
+.pgrid thead th:first-child{z-index:4}
 .pgrid input{font:inherit;font-family:var(--f-num);font-size:12px;width:78px;text-align:right;border:1px solid transparent;background:transparent;color:var(--ink);border-radius:5px;padding:4px 5px}
 .pgrid input:hover:not(:disabled){border-color:var(--line)}
 .pgrid input:focus{border-color:var(--accent);background:var(--surface);outline:none}
