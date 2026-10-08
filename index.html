@@ -256,8 +256,8 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
 .guide h4{margin:0 0 2px;font-size:13px;color:var(--ink)}
 .guide p,.guide ul{margin:0}.guide ul{padding-left:18px}
 .guide table{border-collapse:collapse;font-size:12px}.guide td,.guide th{padding:2px 12px 2px 0;text-align:left;font-weight:400}.guide th{color:var(--ink);font-weight:600}
-.inc{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:8px}
-.inc .inl{align-items:center}.inc .inc-qty{width:70px}
+.inc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:8px}
+.inc .inl{align-items:center;flex-wrap:nowrap}.inc .inl select{flex:none;width:auto;min-width:64px}.inc .inl input{flex:none}.inc-rm{padding:6px 9px;display:inline-flex}.inc .inc-qty{width:70px}
 #sc-more{display:flex;flex-direction:column;gap:10px}
 .rmlist{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:8px}
 .rmlist .rg{background:var(--surface-2);font-size:12px;font-weight:600;padding:5px 10px;color:var(--ink-2)}
@@ -446,7 +446,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
               <div class="rmlist" id="sc-srmlist"></div><div class="sub" id="sc-srmsum"></div>
               <div class="sub">Removed lines free up budget, so less has to be cut elsewhere to pay for the increases.</div></div></details>
             <div class="sc-quick" id="sc-quick"></div>
-            <div><button class="btn" id="sc-run" type="button">Preview scenario</button></div>
+            <div class="toolbar"><button class="btn ghost" id="sc-run" type="button">Preview scenario</button><button class="btn" id="sc-run-apply" type="button" title="Apply straight to the plan. A snapshot is saved first, so you can undo.">Apply</button></div>
           </div>
 
           <div id="sc-target" class="sc-pane" hidden>
@@ -1463,7 +1463,7 @@ function incRowHtml() {
   return `<div class="inc"><label><span class="flabel">Also increase</span><select class="inc-grp" aria-label="Area">${GRP_OPTS}</select></label>
     <label><span class="flabel">By</span><span class="inl"><input class="inc-amt" type="number" step="1" value="10" aria-label="Amount"><select class="inc-unit" aria-label="Unit"><option value="pct">%</option><option value="usd">$</option><option value="ea">$ each × qty</option></select><input class="inc-qty" type="number" min="1" step="1" value="1" aria-label="Quantity" hidden></span></label>
     <label><span class="flabel">Add as a new line (optional)</span><input class="inc-new" type="text" placeholder="e.g. 4 new KOLs" aria-label="New line name"></label>
-    <div><button class="btn ghost inc-rm" type="button">Remove</button></div></div>`;
+    <div><button class="btn ghost inc-rm" type="button" title="Remove this increase" aria-label="Remove this increase"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6M14 11v6"/></svg></button></div></div>`;
 }
 function resetIncs() {
   $("#sc-more").innerHTML = ""; $("#sc-new").value = ""; $("#sc-qty").value = 1; $("#sc-qty").hidden = $("#sc-unit").value !== "ea";
@@ -1508,6 +1508,7 @@ function runShift(skip = new Set()) {
   renderPreview();
 }
 $("#sc-run").addEventListener("click", () => runShift());
+$("#sc-run-apply").addEventListener("click", () => { SCN = null; runShift(); if (SCN && SCN.kind === "shift") applyScenario(); });
 
 /* ---- Hit target ---- */
 function renderGap() {
