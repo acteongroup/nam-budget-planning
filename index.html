@@ -206,6 +206,8 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
 .pl-form h2{margin:0;font-size:18px}
 .pl-form p{margin:0;color:var(--ink-2)}
 .pgrid{min-width:1500px}
+.topscroll{overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:2px}
+.topscroll>div{height:1px}
 /* month header stays visible while scrolling the planner grid: the grid scrolls inside its own frame */
 #planner .tablewrap{max-height:calc(100vh - 130px);overflow:auto}
 .pgrid thead th{position:sticky;top:0;z-index:3;box-shadow:0 1px 0 var(--line)}
@@ -500,7 +502,8 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
             <div class="adj" id="pl-adj"><span class="flabel">Adjust shown rows</span><input id="pl-pct" type="number" step="0.5" placeholder="%" aria-label="Percent change"><button class="btn ghost" id="pl-apply" type="button">Apply %</button></div>
             <button class="btn ghost" id="pl-expand" type="button">Collapse all</button>
           </div></div>
-        <div class="tablewrap"><table class="ledger pgrid" id="pl-grid"></table></div>
+        <div class="topscroll" id="pl-topscroll" aria-hidden="true"><div></div></div>
+        <div class="tablewrap" id="pl-wrap"><table class="ledger pgrid" id="pl-grid"></table></div>
         <p class="hint">Type over any month, or type a new full-year total to rescale that row's months. Use the + at the start of a GL account row for new spend. Changes save automatically.</p>
       </section>
       <section class="panel toolbar" style="justify-content:space-between">
@@ -1285,6 +1288,16 @@ function refreshTotals() {
   clearTimeout(refreshTotals.t); refreshTotals.t = setTimeout(renderInsights, 250);
 }
 
+
+/* top scrollbar mirrors the grid's left-to-right scroll */
+(() => {
+  const top = $("#pl-topscroll"), wrap = $("#pl-wrap"), tbl = $("#pl-grid");
+  const size = () => { top.firstElementChild.style.width = tbl.scrollWidth + "px"; top.style.display = tbl.scrollWidth > wrap.clientWidth + 1 ? "" : "none"; };
+  top.addEventListener("scroll", () => { if (wrap.scrollLeft !== top.scrollLeft) wrap.scrollLeft = top.scrollLeft; });
+  wrap.addEventListener("scroll", () => { if (top.scrollLeft !== wrap.scrollLeft) top.scrollLeft = wrap.scrollLeft; });
+  if (window.ResizeObserver) { const ro = new ResizeObserver(size); ro.observe(tbl); ro.observe(wrap); }
+  window.addEventListener("resize", size); size();
+})();
 
 /* grid interactions */
 const plGrid = $("#pl-grid");
