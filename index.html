@@ -399,6 +399,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
             <button class="btn" id="sv-save" type="button">Save scenario</button>
             <select id="sv-list" aria-label="Saved scenarios" style="max-width:260px"></select>
             <button class="btn ghost" id="sv-load" type="button">Load</button>
+            <button class="btn ghost" id="sv-update" type="button" title="Overwrite the selected saved scenario with the plan as it is now. Type a new name first to rename it too.">Update</button>
             <button class="btn ghost" id="sv-manage" type="button">Compare / manage</button>
           </div>
 
@@ -417,7 +418,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
             <div><h4>Hit target</h4><p>When a cost center or the whole plan is over its target, this suggests cuts that close exactly the gap, using the same flexibility rules. Use <b>Never cut</b> to fence off an area. Targets are set in the table above; type a total in its bottom row and it is split across cost centers.</p></div>
             <div><h4>Remove lines</h4><p>Tick line items to drop them (or set them to $0). The preview shows the savings and how the plan compares to target. This is how to take out a vendor or sponsorship you are no longer funding. The &times; button on a line in the grid does the same for a single line.</p></div>
             <div><h4>Start over</h4><p><b>Start over</b> (top right of the Scenario lab) resets every line item to the plan as first created, from the base year and starting options you chose. Targets and snapshots are kept, and Undo brings your changes back.</p></div>
-            <div><h4>Saved scenarios</h4><p>Use the bar at the top of the Scenario lab: type a name, click <b>Save scenario</b>, and later pick it from the list and click <b>Load</b>. Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
+            <div><h4>Saved scenarios</h4><p>Use the bar at the top of the Scenario lab: type a name, click <b>Save scenario</b>, and later pick it from the list and click <b>Load</b>. To change a saved scenario, edit the plan, pick it in the list and click <b>Update</b> (type a new name first to rename it too). Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
           </div></details>
 
           <div id="sc-shift" class="sc-pane">
@@ -1820,12 +1821,31 @@ $("#sc-undo").addEventListener("click", () => {
   const s = (PLAN.snapshots || [])[0]; if (!s || !s.undoable) return;
   const tb = planTotal(); restoreSnapshot(s.id, true); PLAN.snapshots.shift(); logChange(`Undid "${s.name.replace(/^Before: /, "")}"`, planTotal() - tb, []); renderPlanner(); scheduleSave(); toast(`Undid "${s.name.replace(/^Before: /, "")}"`);
 });
+/* overwrite a saved scenario with the current plan (optionally renaming it) */
+function updateSnapshot(id, newName) {
+  const s = (PLAN.snapshots || []).find(x => x.id === id); if (!s) return null;
+  const old = s.name, was = s.total;
+  if (newName) s.name = newName;
+  s.rows = cloneRows(PLAN.rows); s.targets = PLAN.centers.map(c => c.target || 0); s.total = planTotal(); s.at = new Date().toISOString(); s.by = CURRENT_EMAIL;
+  logChange(`Updated saved scenario "${s.name}"`, 0, [`Was ${usd(was)}, now ${usd(s.total)}${newName && newName !== old ? `; renamed from "${old}"` : ""}`]);
+  scheduleSave(); return s;
+}
+let updArm = null;
+function armUpdate(btn, id, getName, label, done) {
+  if (updArm && updArm.btn === btn && updArm.id === id) {
+    clearTimeout(updArm.t); const was = updArm.label; updArm = null; btn.textContent = was; btn.style.color = "";
+    const s = updateSnapshot(id, getName()); if (s) done(s); return;
+  }
+  if (updArm) { clearTimeout(updArm.t); updArm.btn.textContent = updArm.label; updArm.btn.style.color = ""; }
+  updArm = { btn, id, label, t: setTimeout(() => { btn.textContent = label; btn.style.color = ""; updArm = null; }, 4000) };
+  btn.textContent = "Click again to overwrite"; btn.style.color = "var(--bad)";
+}
 /* quick save / load bar */
 function renderSaveBar() {
   const ss = (PLAN.snapshots || []).filter(x => !x.auto), sel = $("#sv-list"), keep = sel.value;
   sel.innerHTML = ss.length ? ss.map(x => `<option value="${x.id}">${esc(x.name)} · ${usd(x.total)}</option>`).join("") : `<option value="">No saved scenarios yet</option>`;
   if (keep && ss.some(x => x.id === keep)) sel.value = keep;
-  $("#sv-manage").disabled = false; $("#sv-load").disabled = PL_RO || !ss.length; $("#sv-save").disabled = PL_RO; $("#sv-name").disabled = PL_RO;
+  $("#sv-manage").disabled = false; $("#sv-load").disabled = PL_RO || !ss.length; $("#sv-update").disabled = PL_RO || !ss.length; $("#sv-save").disabled = PL_RO; $("#sv-name").disabled = PL_RO;
 }
 $("#sv-save").addEventListener("click", () => {
   const nm = $("#sv-name").value.trim(); if (!nm) { toast("Give the scenario a name first."); $("#sv-name").focus(); return; }
@@ -1835,6 +1855,10 @@ $("#sv-save").addEventListener("click", () => {
 $("#sv-name").addEventListener("keydown", e => { if (e.key === "Enter") $("#sv-save").click(); });
 $("#sv-load").addEventListener("click", () => { const id = $("#sv-list").value; if (!id) return; const s = PLAN.snapshots.find(x => x.id === id); restoreSnapshot(id); toast(`Loaded "${s.name}". Your previous plan was kept as an automatic snapshot.`); });
 $("#sv-manage").addEventListener("click", () => scnSetTab("snap"));
+$("#sv-update").addEventListener("click", () => {
+  const id = $("#sv-list").value; if (!id) return toast("Save a scenario first, then you can update it.");
+  armUpdate($("#sv-update"), id, () => $("#sv-name").value.trim(), "Update", s => { $("#sv-name").value = ""; renderSaveBar(); $("#sv-list").value = s.id; if (!$("#sc-snap").hidden) renderSnaps(); toast(`Updated "${s.name}" with the plan as it is now.`); });
+});
 $("#sc-snapsave").addEventListener("click", () => {
   const nm = $("#sc-snapname").value.trim() || `Snapshot ${new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
   takeSnapshot(nm); $("#sc-snapname").value = ""; renderSnaps(); scheduleSave(); toast(`Saved "${nm}"`);
@@ -1845,9 +1869,10 @@ function renderSnaps() {
   t.innerHTML = `<thead><tr><th>Snapshot</th><th>Saved</th><th>Total</th><th>vs now</th><th></th></tr></thead><tbody>` + ss.map(s => {
     const d = now - s.total;
     return `<tr><td style="white-space:normal">${esc(s.name)}${s.auto ? ' <span class="ctag">auto</span>' : ""}</td><td>${esc(fmtDate(s.at))}</td><td class="num">${usd(s.total)}</td><td class="num">${Math.abs(d) < 0.5 ? "same" : (d > 0 ? "now +" : "now −") + usd(Math.abs(d))}</td>
-      <td style="white-space:nowrap"><button class="btn ghost" data-cmp="${s.id}" type="button">Compare</button> ${PL_RO ? "" : `<button class="btn ghost" data-rst="${s.id}" type="button">Restore</button> <button class="del" data-sdel="${s.id}" type="button" aria-label="Delete snapshot">×</button>`}</td></tr>`;
+      <td style="white-space:nowrap"><button class="btn ghost" data-cmp="${s.id}" type="button">Compare</button> ${PL_RO ? "" : `<button class="btn ghost" data-upd="${s.id}" type="button" title="Overwrite this saved version with the current plan">Update</button> <button class="btn ghost" data-rst="${s.id}" type="button">Restore</button> <button class="del" data-sdel="${s.id}" type="button" aria-label="Delete snapshot">×</button>`}</td></tr>`;
   }).join("") + `</tbody>`;
   t.querySelectorAll("[data-cmp]").forEach(b => b.addEventListener("click", () => compareSnap(b.dataset.cmp)));
+  t.querySelectorAll("[data-upd]").forEach(b => b.addEventListener("click", () => armUpdate(b, b.dataset.upd, () => "", "Update", s => { renderSnaps(); renderSaveBar(); toast(`Updated "${s.name}" with the plan as it is now.`); })));
   t.querySelectorAll("[data-rst]").forEach(b => b.addEventListener("click", () => { restoreSnapshot(b.dataset.rst); toast("Restored. The previous version was saved as a snapshot."); }));
   t.querySelectorAll("[data-sdel]").forEach(b => b.addEventListener("click", () => { PLAN.snapshots = PLAN.snapshots.filter(s => s.id !== b.dataset.sdel); renderSnaps(); renderLabControls(); scheduleSave(); }));
 }
