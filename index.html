@@ -1681,10 +1681,11 @@ function parseCmd(text) {
   else if (/\b(remove|delete|drop)\b/.test(t)) op = "remove";
   else if (/\b(increase|raise|grow|decrease|reduce|cut|lower)\b/.test(t)) op = "adj";
   else if (/\bzero\b/.test(t) || (/\b(set|make|change)\b/.test(t) && /\bto\b/.test(t))) op = "set";
+  if (op === "adj" && /\bto\s+\$?\s*\d/.test(t) && !/\bby\b/.test(t)) op = "set";
   if (!op) return { err: "I didn't catch what to do. Start with average, spread, increase, decrease, set, or remove, then name the line." };
   const rows = cmdMatchRows(t);
   if (!rows.length) return { err: "I couldn't find a matching line item. Use the line's name (or its GL name or code) in your instruction." };
-  const P = { op, rows, text };
+  const P = { op, rows, text, monthly: (op === "adj" || op === "set") && /(\bmonth\b|\bmonthly\b|\bmo\b|\/\s*mo)/.test(t) };
   if (op === "avg") {
     let m;
     if ((m = t.match(new RegExp("\\b(" + MON_RX + ")\\w*\\s*(?:-|–|to|through|thru|and)\\s*(" + MON_RX + ")\\w*")))) P.basis = [monIdx(m[1]), monIdx(m[2])];
@@ -1694,7 +1695,8 @@ function parseCmd(text) {
     P.keep = /\b(remaining|rest of|fill|only the|empty|blank months)\b/.test(t);
     P.skipZeros = /\b(non.?zero|months with spend|ignore zero|excluding zero)\b/.test(t);
   } else if (op === "adj" || op === "set") {
-    const found = (t.match(/-?\d[\d,]*\.?\d*\s*(%|percent|k\b)?/g) || []).map(x => x.trim()).filter(x => !/^\d{5}$/.test(x));
+    let tn = t; Object.keys(PLAN.gls).forEach(g => { tn = tn.split(g.toLowerCase()).join(" "); }); // ignore GL codes typed in the sentence
+    const found = (tn.match(/-?\d[\d,]*\.?\d*\s*(%|percent|k\b)?/g) || []).map(x => x.trim());
     const last = found.pop();
     if (!last && !(op === "set" && /\bzero\b/.test(t))) return { err: op === "adj" ? "How much? For example: increase Travel by 10% or by $5,000." : "What amount? For example: set Engel to 24000." };
     if (last) {
@@ -1720,6 +1722,10 @@ function cmdBuild(P, skip) {
       why = `${MONTHS[a]}–${MONTHS[b]} average ${usd(avg)}/mo${P.skipZeros ? " (zero months ignored)" : ""}${P.keep ? ", other months filled" : ", all 12 months"}`;
     } else if (P.op === "even") { m = Array(12).fill(Math.round(cur / 12)); m[11] += Math.round(cur) - sum(m); why = `${usd(cur)} spread evenly`; }
     else if (P.op === "remove") { why = "Remove the line"; }
+    else if (P.monthly && !P.pct) {
+      m = P.op === "set" ? Array(12).fill(Math.max(0, Math.round(P.val))) : r.m.map(v => Math.max(0, Math.round(v + P.val)));
+      why = P.op === "set" ? `Set to ${usd(Math.max(0, P.val))} every month` : `${P.val > 0 ? "+" : "−"}${usd(Math.abs(P.val))} every month`;
+    }
     else {
       const want = Math.max(0, P.op === "set" ? P.val : P.pct ? cur * (1 + P.val / 100) : cur + P.val);
       const tmp = { m: r.m.slice() }; setRowFy(tmp, want); m = tmp.m;
