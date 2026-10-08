@@ -1236,7 +1236,7 @@ function renderGrid() {
       h += `<tr data-row="${r.id}" class="${r.base === 0 && r.isNew ? "new" : ""}"><td><input class="nm" data-r="${r.id}" data-f="n" value="${esc(r.n)}" ${dis} aria-label="Line item name"></td>` +
         r.m.map((v, i) => `<td><input data-r="${r.id}" data-i="${i}" inputmode="decimal" value="${v ? fmt0(v) : ""}" placeholder="–" ${dis} aria-label="${esc(r.n)} ${MONTHS[i]}"></td>`).join("") +
         `<td class="tot"><input class="fy" data-r="${r.id}" data-f="fy" inputmode="decimal" value="${fmt0(plFy(r))}" ${dis} aria-label="${esc(r.n)} full year"></td><td class="num base">${r.base ? usd(r.base) : "–"}</td><td class="num" data-d="${r.id}"></td>` +
-        `<td><input class="note" data-r="${r.id}" data-f="note" value="${esc(r.note || "")}" placeholder="${PL_RO ? "" : "Add note"}" ${dis} aria-label="Note"></td><td>${PL_RO ? "" : `<button class="del" type="button" data-del="${r.id}" aria-label="Delete ${esc(r.n)}">×</button>`}</td></tr>`;
+        `<td><input class="note" data-r="${r.id}" data-f="note" value="${esc(r.note || "")}" placeholder="${PL_RO ? "" : "Add note"}" ${dis} aria-label="Note"></td><td style="white-space:nowrap">${PL_RO ? "" : `<button class="del" type="button" data-clear="${r.id}" title="Clear amounts (set to $0, keep the line)" aria-label="Clear ${esc(r.n)}">⊘</button><button class="del" type="button" data-del="${r.id}" title="Delete the line" aria-label="Delete ${esc(r.n)}">×</button>`}</td></tr>`;
     });
   });
   h += `<tr class="grand"><td>Total (${rs.length} line items)</td>${MONTHS.map((_, i) => `<td class="num" data-tm="${i}"></td>`).join("")}<td class="num tot" data-tm="fy"></td><td class="num base" data-tm="base"></td><td class="num" data-tm="d"></td><td colspan="2"></td></tr></tbody>`;
@@ -1305,13 +1305,23 @@ plGrid.addEventListener("change", e => {
 });
 plGrid.addEventListener("focusout", e => { const t = e.target; if (t.dataset && t.dataset.i != null) { const r = PLAN.rows.find(x => x.id === t.dataset.r); const v = r.m[+t.dataset.i]; t.value = v ? fmt0(v) : ""; } });
 plGrid.addEventListener("click", e => {
-  const add = e.target.closest("[data-add]"), del = e.target.closest("[data-del]"), gl = e.target.closest("tr.gl");
+  const add = e.target.closest("[data-add]"), del = e.target.closest("[data-del]"), clr = e.target.closest("[data-clear]"), gl = e.target.closest("tr.gl");
   if (add) {
     const g = add.dataset.add, last = PLAN.rows.map(r => r.g).lastIndexOf(g), id = uid();
     PLAN.rows.splice(last + 1, 0, { id, c: plGlCenter(g), g, n: "New line item", m: Array(12).fill(0), base: 0, note: "", isNew: true });
     plst.closed.delete(g); renderGrid(); refreshTotals(); scheduleSave();
     const inp = plGrid.querySelector(`input[data-f="n"][data-r="${id}"]`); if (inp) { inp.focus(); inp.select(); }
     return;
+  }
+  if (clr) {
+    const r = PLAN.rows.find(x => x.id === clr.dataset.clear); if (!r) return;
+    if (!sum(r.m)) { toast(`"${r.n}" is already at $0.`); return; }
+    const was = plFy(r);
+    takeSnapshot(`Before: Clear ${r.n}`, true, true);
+    r.m = Array(12).fill(0);
+    logChange("Cleared line", -was, [`${r.n} (${usd(was)} → $0, ${r.g})`]);
+    renderGrid(); refreshTotals(); renderLabControls(); scheduleSave();
+    toast(`Cleared "${r.n}". The line is still there at $0. Use Undo last scenario to bring the amounts back.`); return;
   }
   if (del) {
     const i = PLAN.rows.findIndex(r => r.id === del.dataset.del), r = PLAN.rows[i];
