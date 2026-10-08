@@ -384,6 +384,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
           <div class="ph"><h2>Scenario lab</h2>
             <div class="toolbar">
               <button class="btn ghost" id="sc-undo" type="button" hidden>↶ Undo last scenario</button>
+              <button class="btn ghost" id="sc-reset" type="button">Start over</button>
               <div class="seg" id="sc-tabs" role="group" aria-label="Scenario tools">
                 <button type="button" data-t="shift" aria-pressed="true">Shift budget</button>
                 <button type="button" data-t="target" aria-pressed="false">Hit target</button>
@@ -407,6 +408,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
               <p style="margin-top:6px">In the preview, <b>untick any line to protect it</b> and its cut moves to the others. <b>Take cuts from &rarr; Same cost center only</b> keeps the offset inside one cost center.</p></div>
             <div><h4>Hit target</h4><p>When a cost center or the whole plan is over its target, this suggests cuts that close exactly the gap, using the same flexibility rules. Use <b>Never cut</b> to fence off an area. Targets are set in the table above; type a total in its bottom row and it is split across cost centers.</p></div>
             <div><h4>Remove lines</h4><p>Tick line items to drop them (or set them to $0). The preview shows the savings and how the plan compares to target. This is how to take out a vendor or sponsorship you are no longer funding. The &times; button on a line in the grid does the same for a single line.</p></div>
+            <div><h4>Start over</h4><p><b>Start over</b> (top right of the Scenario lab) resets every line item to the plan as first created, from the base year and starting options you chose. Targets and snapshots are kept, and Undo brings your changes back.</p></div>
             <div><h4>Snapshots</h4><p>Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
           </div></details>
 
@@ -1109,15 +1111,9 @@ async function openPlanner(pick) {
 }
 $("#plc-base").addEventListener("change", e => { $("#plc-year").value = String(+e.target.value + 1); $("#plc-title").textContent = `Plan the ${+e.target.value + 1} budget`; });
 
-$("#pl-create").addEventListener("submit", async e => {
-  e.preventDefault();
-  const baseYear = $("#plc-base").value, year = $("#plc-year").value.trim(), mode = $("#plc-mode").value, spread = $("#plc-spread").value, p = pnum($("#plc-pct").value), f = 1 + p / 100;
-  const err = $("#plc-err");
-  if (!/^\d{4}$/.test(year)) { err.textContent = "Enter a four-digit plan year."; err.hidden = false; return; }
-  const tgtIn = pnum($("#plc-target").value);
-  const base = D && D.year === baseYear ? D : await B.load(baseYear);
-  if (!base) { err.textContent = "Couldn't load that year's data."; err.hidden = false; return; }
-  const rows = base.items.map(r => {
+/* the plan's starting line items, from a base-year dataset */
+function buildPlanRows(base, mode, spread, f) {
+  return base.items.map(r => {
     const fyb = sum(r.m); let m = Array(12).fill(0);
     if (mode === "forecast" && Math.abs(fyb) >= 0.5) {
       if (spread === "even") { const each = Math.round(fyb * f / 12); m = Array(12).fill(each); m[11] = Math.round(fyb * f) - each * 11; }
@@ -1126,6 +1122,16 @@ $("#pl-create").addEventListener("submit", async e => {
     }
     return { id: uid(), c: r.c, g: r.g, n: r.n, m, base: Math.round(fyb), note: "" };
   });
+}
+$("#pl-create").addEventListener("submit", async e => {
+  e.preventDefault();
+  const baseYear = $("#plc-base").value, year = $("#plc-year").value.trim(), mode = $("#plc-mode").value, spread = $("#plc-spread").value, p = pnum($("#plc-pct").value), f = 1 + p / 100;
+  const err = $("#plc-err");
+  if (!/^\d{4}$/.test(year)) { err.textContent = "Enter a four-digit plan year."; err.hidden = false; return; }
+  const tgtIn = pnum($("#plc-target").value);
+  const base = D && D.year === baseYear ? D : await B.load(baseYear);
+  if (!base) { err.textContent = "Couldn't load that year's data."; err.hidden = false; return; }
+  const rows = buildPlanRows(base, mode, spread, f);
   PLAN = { year, baseYear, status: "draft", basis: mode, pct: p, spread,
     centers: base.centers.map(c => ({ k: c.k, name: c.name, base: c.budget || 0, baseFc: Math.round(sum(base.items.filter(x => x.c === c.k).map(x => sum(x.m)))), target: Math.round((c.budget || 0) * f) })),
     gls: { ...base.gls }, rows, createdAt: new Date().toISOString(), createdBy: CURRENT_EMAIL, updatedAt: new Date().toISOString(), updatedBy: CURRENT_EMAIL };
@@ -1427,7 +1433,7 @@ function renderLabControls() {
   $("#sc-quick").innerHTML = `Try: ` + [["p:shows", 10], ["p:shows", 20], ["p:kol", 15], ["p:adv", -10]].filter(([k]) => pre.some(p => p.k === k))
     .map(([k, v]) => `<button class="chip" type="button" data-qk="${k}" data-qv="${v}">${esc(PRESETS.find(p => p.k === k).name)} ${v > 0 ? "+" : ""}${v}%</button>`).join("");
   $("#pl-tools").querySelectorAll("button,select,input").forEach(el => { if (!["sc-tabs"].includes(el.parentElement.id) && !el.closest("#sc-snap") && el.id !== "sc-undo") el.disabled = PL_RO; });
-  $("#sc-snapsave").disabled = PL_RO; $("#cmd-in").disabled = PL_RO; $("#cmd-go").disabled = PL_RO;
+  $("#sc-snapsave").disabled = PL_RO; $("#cmd-in").disabled = PL_RO; $("#sc-reset").hidden = PL_RO; $("#cmd-go").disabled = PL_RO;
   const last = (PLAN.snapshots || [])[0];
   $("#sc-undo").hidden = PL_RO || !(last && last.auto && last.undoable);
   if (!$("#sc-snap").hidden) renderSnaps();
@@ -1786,6 +1792,21 @@ function restoreSnapshot(id, quiet) {
   if (s.targets) PLAN.centers.forEach((c, i) => { if (s.targets[i] != null) c.target = s.targets[i]; });
   renderPlanner(); scheduleSave();
 }
+let resetArm = null;
+$("#sc-reset").addEventListener("click", async () => {
+  const b = $("#sc-reset");
+  if (!resetArm) { b.textContent = "Click again to reset all line items to the starting plan"; b.style.color = "var(--bad)"; resetArm = setTimeout(() => { resetArm = null; b.textContent = "Start over"; b.style.color = ""; }, 5000); return; }
+  clearTimeout(resetArm); resetArm = null; b.textContent = "Start over"; b.style.color = "";
+  const base = D && D.year === PLAN.baseYear ? D : await B.load(PLAN.baseYear);
+  if (!base) { toast("Couldn't load the " + PLAN.baseYear + " data to rebuild from."); return; }
+  const tb = planTotal();
+  takeSnapshot("Before: Start over", true, true);
+  PLAN.rows = buildPlanRows(base, PLAN.basis || "forecast", PLAN.spread || "pattern", 1 + (PLAN.pct || 0) / 100);
+  logChange("Started over: line items reset to the starting plan", planTotal() - tb, ["Targets were kept"]);
+  closePreview(); RM_SEL = new Set(); SHIFT_RM = new Set(); CMD = null; resetIncs(); $("#cmd-in").value = "";
+  plst.q = ""; plst.c = "all"; $("#pl-q").value = "";
+  renderPlanner(); scheduleSave(); toast("Started over. Line items are back to the starting plan; targets were kept. Use Undo to bring your changes back.");
+});
 $("#sc-undo").addEventListener("click", () => {
   const s = (PLAN.snapshots || [])[0]; if (!s || !s.undoable) return;
   const tb = planTotal(); restoreSnapshot(s.id, true); PLAN.snapshots.shift(); logChange(`Undid "${s.name.replace(/^Before: /, "")}"`, planTotal() - tb, []); renderPlanner(); scheduleSave(); toast(`Undid "${s.name.replace(/^Before: /, "")}"`);
