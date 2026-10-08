@@ -390,9 +390,17 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
                 <button type="button" data-t="target" aria-pressed="false">Hit target</button>
                 <button type="button" data-t="remove" aria-pressed="false">Remove lines</button>
                 <button type="button" data-t="log" aria-pressed="false">Change log</button>
-                <button type="button" data-t="snap" aria-pressed="false">Snapshots</button>
+                <button type="button" data-t="snap" aria-pressed="false">Saved scenarios</button>
               </div>
             </div></div>
+
+          <div class="toolbar" id="sc-savebar" style="margin:0 0 12px;padding:10px;border:1px solid var(--line);border-radius:8px">
+            <input id="sv-name" type="text" placeholder="Name this scenario, e.g. Board draft v1" aria-label="Scenario name" style="flex:1;min-width:200px">
+            <button class="btn" id="sv-save" type="button">Save scenario</button>
+            <select id="sv-list" aria-label="Saved scenarios" style="max-width:260px"></select>
+            <button class="btn ghost" id="sv-load" type="button">Load</button>
+            <button class="btn ghost" id="sv-manage" type="button">Compare / manage</button>
+          </div>
 
           <details class="guide" id="sc-guide"><summary>How scenarios work</summary><div class="gb">
             <div><h4>The basic loop</h4><p>Pick a tool, click <b>Preview</b> to see exactly what would change, then <b>Apply to plan</b>. Nothing touches the plan until you apply. Every apply saves a snapshot first, so <b>Undo last scenario</b> (or Snapshots &rarr; Restore) always gets you back.</p></div>
@@ -409,7 +417,7 @@ table.mini{border-collapse:collapse;width:100%;font-size:13px}
             <div><h4>Hit target</h4><p>When a cost center or the whole plan is over its target, this suggests cuts that close exactly the gap, using the same flexibility rules. Use <b>Never cut</b> to fence off an area. Targets are set in the table above; type a total in its bottom row and it is split across cost centers.</p></div>
             <div><h4>Remove lines</h4><p>Tick line items to drop them (or set them to $0). The preview shows the savings and how the plan compares to target. This is how to take out a vendor or sponsorship you are no longer funding. The &times; button on a line in the grid does the same for a single line.</p></div>
             <div><h4>Start over</h4><p><b>Start over</b> (top right of the Scenario lab) resets every line item to the plan as first created, from the base year and starting options you chose. Targets and snapshots are kept, and Undo brings your changes back.</p></div>
-            <div><h4>Snapshots</h4><p>Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
+            <div><h4>Saved scenarios</h4><p>Use the bar at the top of the Scenario lab: type a name, click <b>Save scenario</b>, and later pick it from the list and click <b>Load</b>. Save the plan under a name before exploring, then <b>Compare</b> a snapshot to the current plan by GL account, or <b>Restore</b> it. The 12 newest are kept.</p></div>
           </div></details>
 
           <div id="sc-shift" class="sc-pane">
@@ -1436,6 +1444,7 @@ function renderLabControls() {
   $("#sc-snapsave").disabled = PL_RO; $("#cmd-in").disabled = PL_RO; $("#sc-reset").hidden = PL_RO; $("#cmd-go").disabled = PL_RO;
   const last = (PLAN.snapshots || [])[0];
   $("#sc-undo").hidden = PL_RO || !(last && last.auto && last.undoable);
+  renderSaveBar();
   if (!$("#sc-snap").hidden) renderSnaps();
   if (!$("#sc-target").hidden) renderGap();
   if (!$("#sc-remove").hidden) renderRemoveList();
@@ -1811,6 +1820,21 @@ $("#sc-undo").addEventListener("click", () => {
   const s = (PLAN.snapshots || [])[0]; if (!s || !s.undoable) return;
   const tb = planTotal(); restoreSnapshot(s.id, true); PLAN.snapshots.shift(); logChange(`Undid "${s.name.replace(/^Before: /, "")}"`, planTotal() - tb, []); renderPlanner(); scheduleSave(); toast(`Undid "${s.name.replace(/^Before: /, "")}"`);
 });
+/* quick save / load bar */
+function renderSaveBar() {
+  const ss = (PLAN.snapshots || []).filter(x => !x.auto), sel = $("#sv-list"), keep = sel.value;
+  sel.innerHTML = ss.length ? ss.map(x => `<option value="${x.id}">${esc(x.name)} · ${usd(x.total)}</option>`).join("") : `<option value="">No saved scenarios yet</option>`;
+  if (keep && ss.some(x => x.id === keep)) sel.value = keep;
+  $("#sv-manage").disabled = false; $("#sv-load").disabled = PL_RO || !ss.length; $("#sv-save").disabled = PL_RO; $("#sv-name").disabled = PL_RO;
+}
+$("#sv-save").addEventListener("click", () => {
+  const nm = $("#sv-name").value.trim(); if (!nm) { toast("Give the scenario a name first."); $("#sv-name").focus(); return; }
+  takeSnapshot(nm); $("#sv-name").value = ""; renderSaveBar(); if (!$("#sc-snap").hidden) renderSnaps(); scheduleSave();
+  $("#sv-list").value = PLAN.snapshots[0].id; toast(`Saved "${nm}". Pick it from the list and click Load to come back to it.`);
+});
+$("#sv-name").addEventListener("keydown", e => { if (e.key === "Enter") $("#sv-save").click(); });
+$("#sv-load").addEventListener("click", () => { const id = $("#sv-list").value; if (!id) return; const s = PLAN.snapshots.find(x => x.id === id); restoreSnapshot(id); toast(`Loaded "${s.name}". Your previous plan was kept as an automatic snapshot.`); });
+$("#sv-manage").addEventListener("click", () => scnSetTab("snap"));
 $("#sc-snapsave").addEventListener("click", () => {
   const nm = $("#sc-snapname").value.trim() || `Snapshot ${new Date().toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
   takeSnapshot(nm); $("#sc-snapname").value = ""; renderSnaps(); scheduleSave(); toast(`Saved "${nm}"`);
