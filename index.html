@@ -1126,7 +1126,11 @@ function buildPlanRows(base, mode, spread, f) {
     const fyb = sum(r.m); let m = Array(12).fill(0);
     if (mode === "forecast" && Math.abs(fyb) >= 0.5) {
       if (spread === "even") { const each = Math.round(fyb * f / 12); m = Array(12).fill(each); m[11] = Math.round(fyb * f) - each * 11; }
-      else if (r.m.some(v => v < 0) && fyb > 0) { const each = Math.round(fyb * f / 12); m = Array(12).fill(each); m[11] = Math.round(fyb * f) - each * 11; } // credits/reversals don't repeat
+      else if (r.m.some(v => v < 0) && fyb > 0) {
+        // a credit/reversal doesn't repeat, but the spend still happens in the months it occurred: keep the positive months, scaled so the full-year net is preserved
+        const pos = r.m.map(v => Math.max(0, v)), ps = sum(pos), want = Math.round(fyb * f);
+        m = pos.map(v => Math.round(v * want / ps)); m[m.reduce((bi, v, j, arr) => v > arr[bi] ? j : bi, 0)] += want - sum(m);
+      }
       else { m = r.m.map(v => Math.round(v * f)); }
     }
     return { id: uid(), c: r.c, g: r.g, n: r.n, m, base: Math.round(fyb), note: "" };
